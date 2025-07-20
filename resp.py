@@ -9,14 +9,14 @@ from llama_index.core import get_response_synthesizer
 from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.postprocessor import SimilarityPostprocessor
-
-
+import torch
 def main():
-    print("📘 Java Tutor Chatbot (modalità terminale)")
+    print("Java Tutor Chatbot")
     print("=" * 50)
 
     # Inizializzazione sistema
     try:
+        torch.cuda.empty_cache()
         print("🔧 Inizializzazione sistema...")
 
         # Configurazione Pinecone
@@ -28,7 +28,7 @@ def main():
 
         # Connessione a Pinecone
         pc = Pinecone(api_key=api_key)
-        index_name = "libv3"
+        index_name = "meta-lib"
         pinecone_index = pc.Index(index_name)
 
         # Configurazione vector store
@@ -42,89 +42,81 @@ def main():
             storage_context=storage_context
         )
 
-        # Configurazione LLM ottimizzata per risposte dettagliate
+        
         llm = Ollama(
             model="llama3.1:8b",
-            temperature=0.3,  # Ridotta per risposte più precise
-            max_tokens=2048,  # Aumentata per risposte più lunghe
-            request_timeout=600,  # Aumentato per elaborazioni complesse
-            context_window=8192,  # Aumentato per più contesto
-            streaming=False  # Disabilitato per debug migliore
+            temperature=0.1,  
+            max_tokens=14000, 
+            request_timeout=600, 
+            context_window=14000,  
+            streaming=False, 
+            min_length=100, 
+            top_p=0.9, 
+            repeat_penalty=1.2  
+    
         )
 
-        # Template del prompt migliorato per risposte dettagliate
+    
         qa_prompt = PromptTemplate(
-            """
-Sei un tutor virtuale esperto di programmazione Java. Il tuo compito è fornire spiegazioni dettagliate e didattiche basate esclusivamente sul contesto fornito.
-
-ISTRUZIONI IMPORTANTI:
-1. Spiega SEMPRE il "perché" oltre al "come"
-2. Fornisci esempi di codice Java quando possibile
-3. Struttura la risposta in modo logico e progressivo
-4. Se il contesto contiene codice, spiegalo riga per riga
-5. Collega i concetti tra loro quando rilevante
-6. Usa un linguaggio chiaro ma tecnico appropriato
-
-Domanda dell'utente:
-{query_str}
-
-Contesto rilevante dalla documentazione:
----------------------
-{context_str}
----------------------
-
-RISPOSTA DETTAGLIATA:
-Inizia la spiegazione partendo dai concetti fondamentali e sviluppa progressivamente verso aspetti più specifici. Includi sempre esempi pratici quando possibile.
-
-"""
+            """Sei un tutor esperto di programmazione Java. Devi fornire una spiegazione dettagliata e didattica basata ESCLUSIVAMENTE sulle informazioni fornite nel contesto.
+                parla quindi delle informazioni recuperate e rispondi alla domanda
+    -------------------------------------------
+                {context_str}
+    ------------------------------------------.
+                query: {query_str}
+                
+                RISPOSTA DETTAGLIATA:"""
         )
 
-        # Setup retriever con più documenti e filtro qualità
+
+    
         retriever = VectorIndexRetriever(
             index=index,
-            similarity_top_k=5,  # Ridotto per qualità migliore
-            embed_model=embed_model
+            similarity_top_k=3,  # Ridotto per qualità migliore
+            embed_model=embed_model,
+            sparse_top_k=2
+            
+
         )
 
         # Post-processor per filtrare documenti di bassa qualità
         postprocessor = SimilarityPostprocessor(
-            similarity_cutoff=0.6  # Filtra documenti con score < 0.6
+            similarity_cutoff=0.80 # Filtra documenti con score < 0.6
         )
 
-        # Setup response synthesizer ottimizzato
+    
         response_synthesizer = get_response_synthesizer(
             llm=llm,
             streaming=False,
-            response_mode="tree_summarize",  # Migliore per risposte dettagliate
+            response_mode="refine",  # Migliore per risposte dettagliate
             text_qa_template=qa_prompt,
             use_async=False
         )
 
-        # Creazione Query Engine con post-processing
         query_engine = RetrieverQueryEngine(
             retriever=retriever,
             response_synthesizer=response_synthesizer,
             node_postprocessors=[postprocessor]
         )
 
-        print("✅ Sistema inizializzato con successo!")
+        print(" Sistema inizializzato con successo!")
 
     except Exception as e:
-        print(f"❌ Errore durante l'inizializzazione: {str(e)}")
+        print(f" Errore durante l'inizializzazione: {str(e)}")
         return
 
-    print("💡 Scrivi una domanda su Java (oppure 'esci' per terminare)")
-    print("💡 Suggerimento: sii specifico per ottenere risposte più dettagliate")
+    print(" Scrivi una domanda su Java (oppure 'esci' per terminare)")
+    print(" Suggerimento: sii specifico per ottenere risposte più dettagliate")
     print("=" * 50)
 
-    # Loop principale per le domande
+
     while True:
         try:
-            user_input = input("\n👉 Domanda: ").strip()
+            user_input = input("\n Domanda: ").strip()
 
             # Comandi di uscita
             if user_input.lower() in ["esci", "exit", "quit", "q"]:
-                print("👋 Arrivederci!")
+                print(" Arrivederci!")
                 break
 
             # Validazione input
@@ -138,12 +130,12 @@ Inizia la spiegazione partendo dai concetti fondamentali e sviluppa progressivam
 
             print("🔍 Elaborazione in corso...")
 
-            # Query al sistema RAG
+            # Query
             response = query_engine.query(user_input)
 
-            # Debug: mostra i documenti utilizzati
+            #mostra i documenti utilizzati
             if hasattr(response, 'source_nodes') and response.source_nodes:
-                print(f"\n📦 Utilizzati {len(response.source_nodes)} documenti di riferimento:")
+                print(f"\n Utilizzati {len(response.source_nodes)} documenti di riferimento:")
                 for i, node in enumerate(response.source_nodes):
                     score = getattr(node, "score", 0)
                     content_preview = node.get_content() 
@@ -151,13 +143,12 @@ Inizia la spiegazione partendo dai concetti fondamentali e sviluppa progressivam
                     print(f"      Preview: {content_preview}")
                     print()
 
-            # Mostra risposta
             print("\n📖 Risposta del Tutor:")
             print("=" * 60)
             
             response_text = str(response)
             if len(response_text.strip()) < 50:
-                print("⚠️  Risposta troppo breve. Prova a riformulare la domanda o essere più specifico.")
+                print("Risposta troppo breve.")
             
             print(response_text)
             print("=" * 60)
@@ -166,13 +157,13 @@ Inizia la spiegazione partendo dai concetti fondamentali e sviluppa progressivam
             if hasattr(response, 'source_nodes') and response.source_nodes:
                 avg_score = sum(getattr(node, "score", 0) for node in response.source_nodes) / len(response.source_nodes)
                 if avg_score < 0.7:
-                    print("💡 La risposta potrebbe non essere completamente accurata. Prova a riformulare la domanda.")
+                    print("La risposta potrebbe non essere completamente accurata. Prova a riformulare la domanda.")
 
         except KeyboardInterrupt:
-            print("\n👋 Interruzione ricevuta. Arrivederci!")
+            print("\nInterruzione ricevuta. Arrivederci!")
             break
         except Exception as e:
-            print(f"❌ Errore durante l'elaborazione: {str(e)}")
+            print(f"Errore durante l'elaborazione: {str(e)}")
             print("Riprova con un'altra domanda.")
 
 
