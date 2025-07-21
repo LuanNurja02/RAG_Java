@@ -56,7 +56,7 @@ qa_extractor = QuestionsAnsweredExtractor(
     
     llm=llm,
     questions=2, 
-    prompt_template="Crea domande inerenti a questo chunk"
+
     
     )
 
@@ -84,10 +84,10 @@ os.environ["PINECONE_API_KEY"] = "pcsk_6VBs3G_8DQhyP34krGmTda5APDdDBnA849MLsswfm
 api_key = os.environ["PINECONE_API_KEY"]
 
 pc = Pinecone(api_key=api_key)
-index_name = "meta-libv2"
+index_name = "meta-lib"
 
 # Crea indice se non esiste
-if index_name not in pc.list_indexes():
+if index_name not in list(pc.list_indexes()):
     print(f"Indice '{index_name}' non trovato, lo creo...")
     pc.create_index(
         name=index_name,
