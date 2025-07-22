@@ -1,5 +1,6 @@
 import os
 import time
+from dotenv import load_dotenv
 from pinecone import Pinecone
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
@@ -13,13 +14,7 @@ import torch
 import gradio as gr
 from llama_index.core.response_synthesizers import ResponseMode
 from gradio import themes
-from dotenv import load_dotenv
-
-# Importa per il re-ranker
 from llama_index.postprocessor.flag_embedding_reranker import FlagEmbeddingReranker
-
-
-# Importa le configurazioni da util.py
 from util import (
     OLLAMA_MODEL,
     OLLAMA_TEMPERATURE,
@@ -31,8 +26,10 @@ from util import (
     DEBUG_CODICE_PROMPT,
     CREA_CODICE_PROMPT
 )
-
 load_dotenv()
+
+
+
 
 #indici Pinecone
 TUTOR_INDEX_NAME = "meta-lib"
@@ -56,13 +53,13 @@ def configure_query_engine(index_instance, llm_instance, embed_model_instance, p
     )
 
     node_postprocessors = [
-        # SimilarityPostprocessor(similarity_cutoff=0.80),
+        SimilarityPostprocessor(similarity_cutoff=0.80),
         reranker_instance
     ]
 
     response_synthesizer = get_response_synthesizer(
         llm=llm_instance,
-        streaming=False,
+        streaming=True,
         response_mode=ResponseMode.COMPACT,
         text_qa_template=prompt_template_instance,
         use_async=False
@@ -83,7 +80,7 @@ query_engines = {}
 
 try:
     torch.cuda.empty_cache()
-    print("🔧 Inizializzazione globale LLM, embedding, re-ranker e indici Pinecone...")
+    # Inizializzazione globale LLM, embedding, re-ranker e indici Pinecone
 
     api_key = os.environ.get("PINECONE_API_KEY")
     if not api_key:
@@ -91,18 +88,17 @@ try:
 
     pc = Pinecone(api_key=api_key)
 
-    embed_model = HuggingFaceEmbedding(model_name=EMBEDDING_MODEL_NAME, device="cuda" if torch.cuda.is_available() else "cpu")
-    print("✅ Modello di embedding caricato.")
+    # Embedding
+    embed_device = "cuda" if torch.cuda.is_available() else "cpu"
+    embed_model = HuggingFaceEmbedding(model_name=EMBEDDING_MODEL_NAME, device=embed_device)
 
     # Inizializzazione del re-ranker
-    print(f"🔄 Caricamento modello di re-ranking '{RERANK_MODEL_NAME}'...")
-    
+    # Il FlagEmbeddingReranker usa HuggingFace sotto il cofano, quindi dovrebbe usare la GPU se disponibile
     reranker = FlagEmbeddingReranker(
         model=RERANK_MODEL_NAME,
-        top_n=RERANK_TOP_N 
-    
+        top_n=RERANK_TOP_N
+        # device=embed_device  # Se supportato, puoi decommentare questa riga
     )
-    print("✅ Modello di re-ranking caricato.")
 
 
     llm = Ollama(
@@ -111,15 +107,13 @@ try:
         max_tokens=OLLAMA_MAX_TOKENS,
         request_timeout=OLLAMA_REQUEST_TIMEOUT,
         context_window=OLLAMA_CONTEXT_WINDOW,
-        streaming=False,
+        streaming=True,
         min_length=100,
         top_p=0.9,
         repeat_penalty=1.2
     )
-    print("✅ Modello LLM Ollama inizializzato.")
 
     # Indice per la modalità Tutor
-    print(f"🔄 Caricamento indice '{TUTOR_INDEX_NAME}' per la modalità Tutor...")
     pinecone_index_tutor = pc.Index(TUTOR_INDEX_NAME)
     vector_store_tutor = PineconeVectorStore(pinecone_index=pinecone_index_tutor)
     storage_context_tutor = StorageContext.from_defaults(vector_store=vector_store_tutor)
@@ -128,10 +122,8 @@ try:
         embed_model=embed_model,
         storage_context=storage_context_tutor
     )
-    print(f"✅ Indice '{TUTOR_INDEX_NAME}' caricato.")
 
     # Indice per la modalità Coding Assistant
-    print(f"🔄 Caricamento indice '{ASSISTANT_INDEX}' per la modalità Coding Assistant...")
     pinecone_index_coding_assistant = pc.Index(ASSISTANT_INDEX)
     vector_store_coding_assistant = PineconeVectorStore(pinecone_index=pinecone_index_coding_assistant)
     storage_context_coding_assistant = StorageContext.from_defaults(vector_store=vector_store_coding_assistant)
@@ -140,7 +132,6 @@ try:
         embed_model=embed_model,
         storage_context=storage_context_coding_assistant
     )
-    print(f"✅ Indice '{ASSISTANT_INDEX}' caricato.")
 
     # Prepara il query engine di default per la modalità Tutor
     query_engines["Tutor"] = configure_query_engine(
@@ -149,8 +140,8 @@ try:
         embed_model_instance=embed_model,
         prompt_template_instance=TUTOR_PROMPT,
         reranker_instance=reranker
+
     )
-    print("✅ Query engine per 'tutor' pronto.")
 
 except Exception as e:
     print(f"❌ Errore critico durante l'inizializzazione globale: {str(e)}")
@@ -167,57 +158,44 @@ def gradio_rag_interface(mode, domanda, codice, prompt_mode):
         full_query = domanda
 
     if not full_query.strip():
-        return "❓ Per favore, inserisci almeno una domanda o del codice da analizzare.", ""
+        yield "❓ Per favore, inserisci almeno una domanda o del codice da analizzare.", ""
+        return
 
     try:
-        if mode == "Tutor":
-            current_query_engine = query_engines["Tutor"]
-            print(f"💡 Esecuzione in modalità TUTOR con domanda: {domanda[:50]}...")
+        current_query_engine = query_engines["Tutor"]
+        print(f"💡 Esecuzione in modalità TUTOR con domanda: {domanda[:50]}...")
 
-        else: # mode == "coding_assistant"
-            if prompt_mode == "Spiegazione":
-                selected_prompt_template = SPIEGAZIONE_CODICE_PROMPT
-            elif prompt_mode == "Debug":
-                selected_prompt_template = DEBUG_CODICE_PROMPT
-            elif prompt_mode == "Crea":
-                selected_prompt_template = CREA_CODICE_PROMPT
-            else:
-                selected_prompt_template = SPIEGAZIONE_CODICE_PROMPT #DEFAULT
-
-            current_query_engine = configure_query_engine(
-                index_instance=vector_indices["Coding Assistant"],
-                llm_instance=llm,
-                embed_model_instance=embed_model,
-                prompt_template_instance=selected_prompt_template,
-                reranker_instance=reranker
-            )
-            print(f"💡 Esecuzione in modalità CODING ASSISTANT ({prompt_mode}) con domanda: {domanda[:50]}...")
-
-        response = current_query_engine.query(full_query)
-
+        # Timing: esecuzione query (retrieval + generazione)
+        t3 = time.perf_counter()
+        # --- STREAMING DELLA RISPOSTA secondo la documentazione llama_index ---
+        partial = ""
+        streaming_response = current_query_engine.query(full_query)
+        if hasattr(streaming_response, 'response_gen'):
+            for text in streaming_response.response_gen:
+                partial += text
+                yield partial, ""
+        else:
+            # Fallback: mostra la risposta completa
+            partial = str(getattr(streaming_response, 'response', streaming_response))
+            yield partial, ""
+        # Alla fine, mostra le fonti se disponibili
         sources_text = ""
-        if hasattr(response, 'source_nodes') and response.source_nodes:
+        if hasattr(streaming_response, 'source_nodes') and streaming_response.source_nodes:
             sources_text += "### Documenti di Riferimento Utilizzati\n"
-            for i, node in enumerate(response.source_nodes):
+            for i, node in enumerate(streaming_response.source_nodes):
                 score = getattr(node, "score", None)
                 content_preview = node.get_content()
                 if len(content_preview) > 500:
                     content_preview = content_preview[:500] + "...\n(Contenuto troncato)"
                 score_str = f"Score: {score:.3f}" if score is not None else "Score: N/A"
                 sources_text += f"**[{i+1}] {score_str}**\n```\n{content_preview}\n```\n\n"
-
-        response_content = str(response)
-        if not response_content.strip():
-            response_content = "Non ho trovato una risposta rilevante basandomi sulle informazioni disponibili."
-        elif len(response_content.strip()) < 50 and not sources_text:
-            response_content += "\n\n💡 La risposta potrebbe essere troppo breve. Prova a riformulare la domanda o a fornire più contesto."
-
-        return response_content, sources_text
+        yield partial, sources_text
+        return
 
     except Exception as e:
         error_message = f"Si è verificato un errore: {str(e)}\nPer favore, riprova."
         print(f"❌ Errore durante l'elaborazione della query: {str(e)}")
-        return error_message, ""
+        yield error_message, ""
 
 
 # Interfaccia Gradio
