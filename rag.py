@@ -149,7 +149,6 @@ except Exception as e:
 
 
 def gradio_rag_interface(mode, domanda, codice, prompt_mode):
-
     codice = codice if codice is not None else ""
 
     if codice.strip():
@@ -162,12 +161,29 @@ def gradio_rag_interface(mode, domanda, codice, prompt_mode):
         return
 
     try:
-        current_query_engine = query_engines["Tutor"]
-        print(f"💡 Esecuzione in modalità TUTOR con domanda: {domanda[:50]}...")
+        if mode == "Tutor":
+            current_query_engine = query_engines["Tutor"]
+            print(f"💡 Esecuzione in modalità TUTOR con domanda: {domanda[:50]}...")
+        else:  # mode == "Coding Assistant"
+            if prompt_mode == "Spiegazione":
+                selected_prompt_template = SPIEGAZIONE_CODICE_PROMPT
+            elif prompt_mode == "Debug":
+                selected_prompt_template = DEBUG_CODICE_PROMPT
+            elif prompt_mode == "Crea":
+                selected_prompt_template = CREA_CODICE_PROMPT
+            else:
+                selected_prompt_template = SPIEGAZIONE_CODICE_PROMPT  # DEFAULT
 
-        # Timing: esecuzione query (retrieval + generazione)
-        t3 = time.perf_counter()
-        # --- STREAMING DELLA RISPOSTA secondo la documentazione llama_index ---
+            current_query_engine = configure_query_engine(
+                index_instance=vector_indices["Coding Assistant"],
+                llm_instance=llm,
+                embed_model_instance=embed_model,
+                prompt_template_instance=selected_prompt_template,
+                reranker_instance=reranker
+            )
+            print(f"💡 Esecuzione in modalità CODING ASSISTANT ({prompt_mode}) con domanda: {domanda[:50]}...")
+
+        # Streaming response
         partial = ""
         streaming_response = current_query_engine.query(full_query)
         if hasattr(streaming_response, 'response_gen'):
@@ -175,10 +191,10 @@ def gradio_rag_interface(mode, domanda, codice, prompt_mode):
                 partial += text
                 yield partial, ""
         else:
-            # Fallback: mostra la risposta completa
             partial = str(getattr(streaming_response, 'response', streaming_response))
             yield partial, ""
-        # Alla fine, mostra le fonti se disponibili
+
+        # Show sources if available
         sources_text = ""
         if hasattr(streaming_response, 'source_nodes') and streaming_response.source_nodes:
             sources_text += "### Documenti di Riferimento Utilizzati\n"
