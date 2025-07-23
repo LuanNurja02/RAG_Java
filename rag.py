@@ -142,7 +142,7 @@ try:
     )
 
 except Exception as e:
-    print(f"❌ Errore critico durante l'inizializzazione globale: {str(e)}")
+    print(f"Errore critico durante l'inizializzazione globale: {str(e)}")
     raise
 
 
@@ -155,7 +155,7 @@ def gradio_rag_interface(mode, domanda, codice, prompt_mode):
         full_query = domanda
 
     if not full_query.strip():
-        yield "❓ Per favore, inserisci almeno una domanda o del codice da analizzare.", ""
+        yield "Per favore, inserisci almeno una domanda o del codice da analizzare.", ""
         return
 
     try:
@@ -208,7 +208,7 @@ def gradio_rag_interface(mode, domanda, codice, prompt_mode):
 
     except Exception as e:
         error_message = f"Si è verificato un errore: {str(e)}\nPer favore, riprova."
-        print(f"❌ Errore durante l'elaborazione della query: {str(e)}")
+        print(f"Errore durante l'elaborazione della query: {str(e)}")
         yield error_message, ""
 
 

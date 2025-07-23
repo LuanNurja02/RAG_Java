@@ -108,7 +108,7 @@ nodes = pipeline.run(
     show_progress=True,
     in_place=True 
 )
-print(f"✅ Pipeline completata! Generati {len(nodes)} nodi di codice.")
+print(f"Pipeline completata! Generati {len(nodes)} nodi di codice.")
 
 # --- Setup di Pinecone ---
 
@@ -156,7 +156,7 @@ if index_stats_before['total_vector_count'] == 0:
         embed_model=embed_model,
         show_progress=True
     )
-    print(f"✅ Indice della codebase Java creato con successo con {len(nodes)} nodi.")
+    print(f"Indice della codebase Java creato con successo con {len(nodes)} nodi.")
 else:
     print("L'indice esiste e contiene dati. Caricamento dell'indice esistente...")
     
@@ -164,7 +164,7 @@ else:
         vector_store=vector_store,
         embed_model=embed_model
     )
-    print("✅ Indice della codebase Java caricato.")
+    print("Indice della codebase Java caricato.")
 
 # Controlla le statistiche dell'indice dopo l'aggiunta
 index_stats_after = pinecone_index.describe_index_stats()
