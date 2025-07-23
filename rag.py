@@ -26,7 +26,7 @@ from util import (
     DEBUG_CODICE_PROMPT,
     CREA_CODICE_PROMPT
 )
-load_dotenv()
+load_dotenv(load_dotenv(dotenv_path='pinecone_key.env'))
 
 
 
@@ -37,7 +37,6 @@ ASSISTANT_INDEX = "java-codebase"
 
 # Configurazione del modello di embedding
 EMBEDDING_MODEL_NAME = "intfloat/e5-small-v2"
-EMBEDDING_DIMENSION = 384
 
 #Re-ranker
 RERANK_MODEL_NAME = "BAAI/bge-reranker-base" 
@@ -92,12 +91,11 @@ try:
     embed_device = "cuda" if torch.cuda.is_available() else "cpu"
     embed_model = HuggingFaceEmbedding(model_name=EMBEDDING_MODEL_NAME, device=embed_device)
 
-    # Inizializzazione del re-ranker
-    # Il FlagEmbeddingReranker usa HuggingFace sotto il cofano, quindi dovrebbe usare la GPU se disponibile
+
+    #imposta il reranker
     reranker = FlagEmbeddingReranker(
         model=RERANK_MODEL_NAME,
         top_n=RERANK_TOP_N
-        # device=embed_device  # Se supportato, puoi decommentare questa riga
     )
 
 
@@ -183,7 +181,7 @@ def gradio_rag_interface(mode, domanda, codice, prompt_mode):
             )
             print(f"💡 Esecuzione in modalità CODING ASSISTANT ({prompt_mode}) con domanda: {domanda[:50]}...")
 
-        # Streaming response
+        #risposta in modalità streaming 
         partial = ""
         streaming_response = current_query_engine.query(full_query)
         if hasattr(streaming_response, 'response_gen'):
@@ -194,7 +192,7 @@ def gradio_rag_interface(mode, domanda, codice, prompt_mode):
             partial = str(getattr(streaming_response, 'response', streaming_response))
             yield partial, ""
 
-        # Show sources if available
+        #mostra i documenti recuperati 
         sources_text = ""
         if hasattr(streaming_response, 'source_nodes') and streaming_response.source_nodes:
             sources_text += "### Documenti di Riferimento Utilizzati\n"
