@@ -11,7 +11,7 @@ OLLAMA_REQUEST_TIMEOUT = 600
 
 TUTOR_PROMPT = PromptTemplate(
     """Sei un tutor esperto di programmazione Java. Devi fornire una spiegazione dettagliata e didattica basata ESCLUSIVAMENTE sulle informazioni fornite nel contesto.
-    Parla quindi delle informazioni recuperate e rispondi alla domanda.
+    Parla quindi delle informazioni recuperate e rispondi alla domanda, facendo esempi di codice java.
 -------------------------------------------
 {context_str}
 ------------------------------------------.
