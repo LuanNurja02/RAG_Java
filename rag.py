@@ -41,13 +41,13 @@ EMBEDDING_MODEL_NAME = "intfloat/e5-small-v2"
 
 # Re-ranker
 RERANK_MODEL_NAME = "BAAI/bge-reranker-base"
-RERANK_TOP_N = 2  # nodi da usare dopo il re-ranking
+RERANK_TOP_N = 3  # nodi da usare dopo il re-ranking
 
 # Funzione per Configurare il Query Engine
 def configure_query_engine(index_instance, llm_instance, embed_model_instance, prompt_template_instance, reranker_instance):
     retriever = VectorIndexRetriever(
         index=index_instance,
-        similarity_top_k=5,
+        similarity_top_k=10,
         embed_model=embed_model_instance,
         sparse_top_k=2
     )
@@ -289,8 +289,8 @@ with gr.Blocks(theme=themes.Soft()) as demo:
                 )
                 # Column to hold the buttons vertically next to the textbox
                 with gr.Column(scale=2, min_width=100): # Adjust scale and min_width as needed
-                    btn_submit = gr.Button("Invia Messaggio", variant="primary", icon="DATA/gui_icon/coffee.png")
-                    btn_clear = gr.Button("Cancella Tutto", variant="secondary", icon="DATA/gui_icon/trash.png")
+                    btn_submit = gr.Button("Invia", variant="primary", icon="DATA/gui_icon/coffee.png")
+                    btn_clear = gr.Button("Cancella", variant="secondary", icon="DATA/gui_icon/trash.png")
 
 
     # Event Handlers
