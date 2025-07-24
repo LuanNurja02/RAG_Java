@@ -40,7 +40,9 @@ RERANK_MODEL_NAME = "BAAI/bge-reranker-base"
 RERANK_TOP_N = 3  # nodi da usare dopo il re-ranking
 
 # Funzione per Configurare il Query Engine
-def configure_query_engine(index_instance, llm_instance, embed_model_instance, prompt_template_instance, reranker_instance):
+# AGGIUNTA: response_mode come parametro
+
+def configure_query_engine(index_instance, llm_instance, embed_model_instance, prompt_template_instance, reranker_instance, response_mode=ResponseMode.COMPACT):
     retriever = VectorIndexRetriever(
         
         index=index_instance,
@@ -60,7 +62,7 @@ def configure_query_engine(index_instance, llm_instance, embed_model_instance, p
         
         llm=llm_instance,
         streaming=True,
-        response_mode=ResponseMode.COMPACT,
+        response_mode=response_mode,
         text_qa_template=prompt_template_instance,
         use_async=False
         
@@ -73,6 +75,12 @@ def configure_query_engine(index_instance, llm_instance, embed_model_instance, p
         node_postprocessors=node_postprocessors
         
     )
+
+# AGGIUNTA: funzione di mapping per la modalità di risposta
+RESPONSE_MODE_MAP = {
+    "Dettagliata": ResponseMode.COMPACT,
+    "Sintetica": ResponseMode.TREE_SUMMARIZE
+}
 
 llm = None
 embed_model = None
@@ -146,7 +154,7 @@ except Exception as e:
     raise
 
 
-def process_message(message: str, history: list, mode: str, prompt_mode: str, codice: str):
+def process_message(message: str, history: list, mode: str, prompt_mode: str, codice: str, response_mode_tutor: str):
 
     history.append([message, None])
 
@@ -169,8 +177,17 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
     try:
         
         if mode == "Tutor":
-            current_query_engine = query_engines["Tutor"]
-            print(f"💡 Executing in TUTOR mode with query: {message[:50]}...")
+            # Prendi la modalità di risposta scelta
+            selected_response_mode = RESPONSE_MODE_MAP.get(response_mode_tutor, ResponseMode.COMPACT)
+            current_query_engine = configure_query_engine(
+                index_instance=vector_indices["Tutor"],
+                llm_instance=llm,
+                embed_model_instance=embed_model,
+                prompt_template_instance=TUTOR_PROMPT,
+                reranker_instance=reranker,
+                response_mode=selected_response_mode
+            )
+            print(f"💡 Executing in TUTOR mode with query: {message[:50]}... (ResponseMode: {response_mode_tutor})")
         else:  # mode == "Coding Assistant"
             if prompt_mode == "Spiegazione":
                 selected_prompt_template = SPIEGAZIONE_CODICE_PROMPT
@@ -250,6 +267,15 @@ with gr.Blocks(theme=themes.Soft()) as demo:
                 info="**Tutor:** concetti Java e documentazione. **Coding Assistant:** assistenza su codice specifico",
                 interactive=True
             )
+            # AGGIUNTA: selettore modalità risposta per Tutor
+            response_mode_tutor = gr.Radio(
+                ["Dettagliata", "Sintetica"],
+                value="Dettagliata",
+                label="Modalità di risposta",
+                info="<b>Dettagliata</b>: risposta completa e approfondita. <b>Sintetica</b>: risposta riassuntiva e strutturata ad albero, utile per panoramiche rapide.",
+                visible=True,
+                interactive=True
+            )
             prompt_mode = gr.Radio(
                 ["Spiegazione", "Debug", "Crea"],
                 value="Spiegazione",
@@ -292,15 +318,19 @@ with gr.Blocks(theme=themes.Soft()) as demo:
 
 
     mode.change(
-        fn=lambda selected_mode: (gr.update(visible=selected_mode == "Coding Assistant"), gr.update(visible=selected_mode == "Coding Assistant")),
+        fn=lambda selected_mode: (
+            gr.update(visible=selected_mode == "Coding Assistant"),
+            gr.update(visible=selected_mode == "Coding Assistant"),
+            gr.update(visible=selected_mode == "Tutor")
+        ),
         inputs=mode,
-        outputs=[prompt_mode, codice],
+        outputs=[prompt_mode, codice, response_mode_tutor],
         queue=False
     )
 
     btn_submit.click(
         fn=process_message,
-        inputs=[domanda_input, chatbot, mode, prompt_mode, codice],
+        inputs=[domanda_input, chatbot, mode, prompt_mode, codice, response_mode_tutor],
         outputs=[chatbot, fonti],
         queue=True 
     ).then(
@@ -318,9 +348,10 @@ with gr.Blocks(theme=themes.Soft()) as demo:
             "", # codice
             "Le fonti recuperate appariranno qui.", # Restore sources text
             gr.update(value="Spiegazione", visible=False), # Restore prompt_mode and hide it
-            gr.update(value="Tutor") # Restore mode
+            gr.update(value="Tutor"), # Restore mode
+            gr.update(value="Dettagliata", visible=True)
         ),
-        outputs=[chatbot, domanda_input, codice, fonti, prompt_mode, mode],
+        outputs=[chatbot, domanda_input, codice, fonti, prompt_mode, mode, response_mode_tutor],
         queue=False
     )
 
