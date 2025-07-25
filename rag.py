@@ -28,7 +28,7 @@ from util import (
 )
 from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.chat_engine import ContextChatEngine
-load_dotenv(dotenv_path='pinecone_key.env') 
+load_dotenv(dotenv_path='pinecone_key.env')
 
 # Indici Pinecone
 TUTOR_INDEX_NAME = "meta-lib"
@@ -84,10 +84,8 @@ def configure_query_engine(index_instance, llm_instance, embed_model_instance, p
 
 # funzione di mapping per la modalità di risposta
 RESPONSE_MODE_MAP = {
-    
     "Dettagliata": ResponseMode.COMPACT,
     "Sintetica": ResponseMode.TREE_SUMMARIZE
-    
 }
 
 llm = None
@@ -111,10 +109,8 @@ try:
 
     #re-ranker
     reranker = FlagEmbeddingReranker(
-        
         model=RERANK_MODEL_NAME,
         top_n=RERANK_TOP_N
-        
     )
 
     llm = Ollama(
@@ -154,24 +150,20 @@ try:
     chat_memory_coding = ChatMemoryBuffer.from_defaults(token_limit=5000)
 
     query_engines["Tutor"] = configure_query_engine(
-        
         index_instance=vector_indices["Tutor"],
         llm_instance=llm,
         embed_model_instance=embed_model,
         prompt_template_instance=TUTOR_PROMPT,
         reranker_instance=reranker,
         memory=chat_memory_tutor
-        
     )
     query_engines["Coding Assistant"] = configure_query_engine(
-        
         index_instance=vector_indices["Coding Assistant"],
         llm_instance=llm,
         embed_model_instance=embed_model,
         prompt_template_instance=SPIEGAZIONE_CODICE_PROMPT,  # default, verrà cambiato runtime
         reranker_instance=reranker,
         memory=chat_memory_coding
-        
     )
 
 except Exception as e:
@@ -190,7 +182,6 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
         full_query = message
 
     if not full_query.strip():
-    
         if history and history[-1][0] == message and history[-1][1] is None:
             history.pop()
         yield history, "Please enter at least a question or code to analyze."
@@ -200,29 +191,26 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
     sources_output_text = ""
 
     try:
-        
         if mode == "Tutor":
-            # Prendi la modalità di risposta scelta
-            selected_response_mode = RESPONSE_MODE_MAP.get(response_mode_tutor, ResponseMode.COMPACT)
+            # Prendi la modalità di risposta scelta, solo se chat_mode è "Classica"
+            selected_response_mode = RESPONSE_MODE_MAP.get(response_mode_tutor, ResponseMode.COMPACT) if chat_mode == "Classica" else ResponseMode.COMPACT
+
             if chat_mode == "Chat":
                 # Usa ContextChatEngine con memoria
                 current_query_engine = configure_query_engine(
-                    
                     index_instance=vector_indices["Tutor"],
                     llm_instance=llm,
                     embed_model_instance=embed_model,
                     prompt_template_instance=TUTOR_PROMPT,
                     reranker_instance=reranker,
-                    response_mode=selected_response_mode,
-                    memory=chat_memory_tutor    
-                                    
+                    response_mode=ResponseMode.COMPACT, # Sempre COMPACT in modalità chat
+                    memory=chat_memory_tutor
                 )
-                print(f"💡 Executing in TUTOR mode (Chat) with query: {message[:50]}... (ResponseMode: {response_mode_tutor})")
+                print(f"💡 Executing in TUTOR mode (Chat) with query: {message[:50]}...")
                 streaming_response = current_query_engine.stream_chat(full_query)
             else:
                 # Usa RetrieverQueryEngine senza memoria, con response_synthesizer custom
                 current_query_engine = configure_query_engine(
-                    
                     index_instance=vector_indices["Tutor"],
                     llm_instance=llm,
                     embed_model_instance=embed_model,
@@ -230,7 +218,6 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                     reranker_instance=reranker,
                     response_mode=selected_response_mode,
                     memory=None
-                    
                 )
                 print(f"💡 Executing in TUTOR mode (Classica) with query: {message[:50]}... (ResponseMode: {response_mode_tutor})")
                 streaming_response = current_query_engine.query(full_query)
@@ -243,71 +230,61 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                 selected_prompt_template = CREA_CODICE_PROMPT
             else:
                 selected_prompt_template = SPIEGAZIONE_CODICE_PROMPT  # DEFAULT for Coding Assistant
+
             if chat_mode == "Chat":
                 current_query_engine = configure_query_engine(
-                    
                     index_instance=vector_indices["Coding Assistant"],
                     llm_instance=llm,
                     embed_model_instance=embed_model,
                     prompt_template_instance=selected_prompt_template,
                     reranker_instance=reranker,
                     memory=chat_memory_coding
-                    
                 )
                 print(f"💡 Executing in CODING ASSISTANT mode (Chat) ({prompt_mode}) with query: {message[:50]}...")
                 streaming_response = current_query_engine.stream_chat(full_query)
             else:
                 current_query_engine = configure_query_engine(
-                    
                     index_instance=vector_indices["Coding Assistant"],
                     llm_instance=llm,
                     embed_model_instance=embed_model,
                     prompt_template_instance=selected_prompt_template,
                     reranker_instance=reranker,
                     memory=None
-                    
                 )
                 print(f"💡 Executing in CODING ASSISTANT mode (Classica) ({prompt_mode}) with query: {message[:50]}...")
                 streaming_response = current_query_engine.query(full_query)
 
-        
         if hasattr(streaming_response, 'response_gen'):
             for text_chunk in streaming_response.response_gen:
                 current_response_text += text_chunk
-                
                 history[-1][1] = current_response_text
-            
                 yield history, ""
         else:
-        
             current_response_text = str(getattr(streaming_response, 'response', streaming_response))
             history[-1][1] = current_response_text
             yield history, ""
 
-    
         if hasattr(streaming_response, 'source_nodes') and streaming_response.source_nodes:
-            sources_output_text += "### Reference Documents Used\n"
+            sources_output_text += "### Documenti di Riferimento Utilizzati\n"
             for i, node in enumerate(streaming_response.source_nodes):
                 score = getattr(node, "score", None)
                 content_preview = node.get_content()
-                
                 if len(content_preview) > 500:
-                    content_preview = content_preview[:500] + "...\n(Content truncated)"
+                    content_preview = content_preview[:500] + "...\n(Contenuto troncato)"
                 score_str = f"Score: {score:.3f}" if score is not None else "Score: N/A"
                 sources_output_text += f"**[{i+1}] {score_str}**\n```\n{content_preview}\n```\n\n"
-
 
         yield history, sources_output_text
 
     except Exception as e:
-        error_message = f"An error occurred: {str(e)}\nPlease try again."
+        error_message = f"Si è verificato un errore: {str(e)}\nPer favore riprova."
         print(f"Error processing query: {str(e)}")
         history[-1][1] = error_message
         yield history, ""
 
 
 # Gradio Interface
-with gr.Blocks(theme=themes.Soft()) as demo:
+with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
     gr.Markdown("# ☕Java AI Assistant")
     gr.Markdown(
         "Benvenuto! Sono il tuo assistente per la programmazione Java. "
@@ -316,7 +293,6 @@ with gr.Blocks(theme=themes.Soft()) as demo:
     )
 
     with gr.Row():
-        
         with gr.Column(scale=1):
             mode = gr.Radio(
                 ["Tutor", "Coding Assistant"],
@@ -325,13 +301,20 @@ with gr.Blocks(theme=themes.Soft()) as demo:
                 info="**Tutor:** concetti Java e documentazione. **Coding Assistant:** assistenza su codice specifico",
                 interactive=True
             )
-            # AGGIUNTA: selettore modalità risposta per Tutor
+            chat_mode = gr.Radio(
+                ["Classica", "Chat"],
+                value="Classica",
+                label="Modalità conversazione",
+                info="Classica: risposta singola, Chat: memoria conversazionale",
+                visible=True,
+                interactive=True
+            )
             response_mode_tutor = gr.Radio(
                 ["Dettagliata", "Sintetica"],
                 value="Dettagliata",
                 label="Modalità di risposta",
                 info="<b>Dettagliata</b>: risposta completa e approfondita. <b>Sintetica</b>: risposta riassuntiva e strutturata ad albero, utile per panoramiche rapide.",
-                visible=True,
+                visible=True, # Initially visible if Classica is default
                 interactive=True
             )
             prompt_mode = gr.Radio(
@@ -347,66 +330,59 @@ with gr.Blocks(theme=themes.Soft()) as demo:
                 lines=7,
                 placeholder="Incolla qui il codice Java da analizzare, debuggare o su cui vuoi basare una generazione. (Ignorato in modalità Tutor)",
                 interactive=True,
-                visible=False 
-            )
-            # AGGIUNTA: selettore modalità classica/chat
-            chat_mode = gr.Radio(
-                ["Classica", "Chat"],
-                value="Classica",
-                label="Modalità conversazione",
-                info="Classica: risposta singola, Chat: memoria conversazionale",
-                visible=True,
-                interactive=True
+                visible=False
             )
 
-        
         with gr.Column(scale=3):
             chatbot = gr.Chatbot(
                 label="Conversazione",
                 elem_id="chatbot",
-                height=500 
+                height=500
             )
-            fonti = gr.Markdown(label="Documenti di Riferimento Utilizzati", value="Le fonti recuperate appariranno qui.")
+            fonzi = gr.Markdown(label="Documenti di Riferimento Utilizzati", value="Le fonti recuperate appariranno qui.")
 
-        
             with gr.Row():
                 domanda_input = gr.Textbox(
                     label="Il tuo messaggio",
                     lines=2,
                     placeholder="Digita la tua domanda qui...",
                     interactive=True,
-                    scale=8 
+                    scale=8
                 )
-                
-                with gr.Column(scale=2, min_width=100): 
+
+                with gr.Column(scale=2, min_width=100):
                     btn_submit = gr.Button("Invia", variant="primary", icon="DATA/gui_icon/coffee.png")
                     btn_clear = gr.Button("Cancella", variant="secondary", icon="DATA/gui_icon/trash.png")
 
-
-
     mode.change(
         fn=lambda selected_mode: (
-            gr.update(visible=selected_mode == "Coding Assistant"),
-            gr.update(visible=selected_mode == "Coding Assistant"),
-            gr.update(visible=selected_mode == "Tutor")
+            gr.update(visible=selected_mode == "Coding Assistant"), # prompt_mode
+            gr.update(visible=selected_mode == "Coding Assistant"), # codice
+            gr.update(visible=selected_mode == "Tutor") # response_mode_tutor (initial state based on mode)
         ),
         inputs=mode,
         outputs=[prompt_mode, codice, response_mode_tutor],
         queue=False
     )
 
+    # New event listener for chat_mode to control response_mode_tutor visibility
+    chat_mode.change(
+        fn=lambda selected_chat_mode, current_mode: gr.update(visible=selected_chat_mode == "Classica" and current_mode == "Tutor"),
+        inputs=[chat_mode, mode],
+        outputs=[response_mode_tutor],
+        queue=False
+    )
+
     btn_submit.click(
         fn=process_message,
         inputs=[domanda_input, chatbot, mode, prompt_mode, codice, response_mode_tutor, chat_mode],
-        outputs=[chatbot, fonti],
-        queue=True 
+        outputs=[chatbot, fonzi],
+        queue=True
     ).then(
-    
         lambda: "",
         inputs=None,
         outputs=[domanda_input]
     )
-
 
     btn_clear.click(
         fn=lambda: (
@@ -416,9 +392,10 @@ with gr.Blocks(theme=themes.Soft()) as demo:
             "Le fonti recuperate appariranno qui.", # Restore sources text
             gr.update(value="Spiegazione", visible=False), # Restore prompt_mode and hide it
             gr.update(value="Tutor"), # Restore mode
-            gr.update(value="Dettagliata", visible=True)
+            gr.update(value="Dettagliata", visible=True), # Restore response_mode_tutor to visible and default value
+            gr.update(value="Classica", visible=True) # Restore chat_mode to visible and default value
         ),
-        outputs=[chatbot, domanda_input, codice, fonti, prompt_mode, mode, response_mode_tutor],
+        outputs=[chatbot, domanda_input, codice, fonzi, prompt_mode, mode, response_mode_tutor, chat_mode],
         queue=False
     )
 
