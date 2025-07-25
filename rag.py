@@ -26,6 +26,8 @@ from util import (
     DEBUG_CODICE_PROMPT,
     CREA_CODICE_PROMPT
 )
+from llama_index.core.memory import ChatMemoryBuffer
+from llama_index.core.chat_engine import ContextChatEngine
 load_dotenv(dotenv_path='pinecone_key.env') 
 
 # Indici Pinecone
@@ -42,44 +44,50 @@ RERANK_TOP_N = 3  # nodi da usare dopo il re-ranking
 # Funzione per Configurare il Query Engine
 # AGGIUNTA: response_mode come parametro
 
-def configure_query_engine(index_instance, llm_instance, embed_model_instance, prompt_template_instance, reranker_instance, response_mode=ResponseMode.COMPACT):
+def configure_query_engine(index_instance, llm_instance, embed_model_instance, prompt_template_instance, reranker_instance, response_mode=ResponseMode.COMPACT, memory=None):
     retriever = VectorIndexRetriever(
-        
         index=index_instance,
         similarity_top_k=10,
         embed_model=embed_model_instance,
         sparse_top_k=2
-        
     )
 
     node_postprocessors = [
-        
         SimilarityPostprocessor(similarity_cutoff=0.80),
         reranker_instance
     ]
 
     response_synthesizer = get_response_synthesizer(
-        
         llm=llm_instance,
         streaming=True,
         response_mode=response_mode,
         text_qa_template=prompt_template_instance,
         use_async=False
-        
     )
 
-    return RetrieverQueryEngine(
-        
-        retriever=retriever,
-        response_synthesizer=response_synthesizer,
-        node_postprocessors=node_postprocessors
-        
-    )
+    if memory is not None:
+        # Modalità chat: ContextChatEngine
+        return ContextChatEngine(
+            retriever=retriever,
+            llm=llm_instance,
+            memory=memory,
+            node_postprocessors=node_postprocessors,
+            prefix_messages=[]
+        )
+    else:
+        # Modalità classica: RetrieverQueryEngine
+        return RetrieverQueryEngine(
+            retriever=retriever,
+            response_synthesizer=response_synthesizer,
+            node_postprocessors=node_postprocessors
+        )
 
-# AGGIUNTA: funzione di mapping per la modalità di risposta
+# funzione di mapping per la modalità di risposta
 RESPONSE_MODE_MAP = {
+    
     "Dettagliata": ResponseMode.COMPACT,
     "Sintetica": ResponseMode.TREE_SUMMARIZE
+    
 }
 
 llm = None
@@ -101,7 +109,7 @@ try:
     embed_device = "cuda" if torch.cuda.is_available() else "cpu"
     embed_model = HuggingFaceEmbedding(model_name=EMBEDDING_MODEL_NAME, device=embed_device)
 
-    # Set up the re-ranker
+    #re-ranker
     reranker = FlagEmbeddingReranker(
         
         model=RERANK_MODEL_NAME,
@@ -141,12 +149,29 @@ try:
     )
 
 
+    # Inizializza le memorie globali per Tutor e Coding Assistant
+    chat_memory_tutor = ChatMemoryBuffer.from_defaults(token_limit=5000)
+    chat_memory_coding = ChatMemoryBuffer.from_defaults(token_limit=5000)
+
     query_engines["Tutor"] = configure_query_engine(
+        
         index_instance=vector_indices["Tutor"],
         llm_instance=llm,
         embed_model_instance=embed_model,
         prompt_template_instance=TUTOR_PROMPT,
-        reranker_instance=reranker
+        reranker_instance=reranker,
+        memory=chat_memory_tutor
+        
+    )
+    query_engines["Coding Assistant"] = configure_query_engine(
+        
+        index_instance=vector_indices["Coding Assistant"],
+        llm_instance=llm,
+        embed_model_instance=embed_model,
+        prompt_template_instance=SPIEGAZIONE_CODICE_PROMPT,  # default, verrà cambiato runtime
+        reranker_instance=reranker,
+        memory=chat_memory_coding
+        
     )
 
 except Exception as e:
@@ -154,7 +179,7 @@ except Exception as e:
     raise
 
 
-def process_message(message: str, history: list, mode: str, prompt_mode: str, codice: str, response_mode_tutor: str):
+def process_message(message: str, history: list, mode: str, prompt_mode: str, codice: str, response_mode_tutor: str, chat_mode: str):
 
     history.append([message, None])
 
@@ -179,15 +204,36 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
         if mode == "Tutor":
             # Prendi la modalità di risposta scelta
             selected_response_mode = RESPONSE_MODE_MAP.get(response_mode_tutor, ResponseMode.COMPACT)
-            current_query_engine = configure_query_engine(
-                index_instance=vector_indices["Tutor"],
-                llm_instance=llm,
-                embed_model_instance=embed_model,
-                prompt_template_instance=TUTOR_PROMPT,
-                reranker_instance=reranker,
-                response_mode=selected_response_mode
-            )
-            print(f"💡 Executing in TUTOR mode with query: {message[:50]}... (ResponseMode: {response_mode_tutor})")
+            if chat_mode == "Chat":
+                # Usa ContextChatEngine con memoria
+                current_query_engine = configure_query_engine(
+                    
+                    index_instance=vector_indices["Tutor"],
+                    llm_instance=llm,
+                    embed_model_instance=embed_model,
+                    prompt_template_instance=TUTOR_PROMPT,
+                    reranker_instance=reranker,
+                    response_mode=selected_response_mode,
+                    memory=chat_memory_tutor    
+                                    
+                )
+                print(f"💡 Executing in TUTOR mode (Chat) with query: {message[:50]}... (ResponseMode: {response_mode_tutor})")
+                streaming_response = current_query_engine.stream_chat(full_query)
+            else:
+                # Usa RetrieverQueryEngine senza memoria, con response_synthesizer custom
+                current_query_engine = configure_query_engine(
+                    
+                    index_instance=vector_indices["Tutor"],
+                    llm_instance=llm,
+                    embed_model_instance=embed_model,
+                    prompt_template_instance=TUTOR_PROMPT,
+                    reranker_instance=reranker,
+                    response_mode=selected_response_mode,
+                    memory=None
+                    
+                )
+                print(f"💡 Executing in TUTOR mode (Classica) with query: {message[:50]}... (ResponseMode: {response_mode_tutor})")
+                streaming_response = current_query_engine.query(full_query)
         else:  # mode == "Coding Assistant"
             if prompt_mode == "Spiegazione":
                 selected_prompt_template = SPIEGAZIONE_CODICE_PROMPT
@@ -197,20 +243,32 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                 selected_prompt_template = CREA_CODICE_PROMPT
             else:
                 selected_prompt_template = SPIEGAZIONE_CODICE_PROMPT  # DEFAULT for Coding Assistant
-
-            current_query_engine = configure_query_engine(
-                
-                index_instance=vector_indices["Coding Assistant"],
-                llm_instance=llm,
-                embed_model_instance=embed_model,
-                prompt_template_instance=selected_prompt_template,
-                reranker_instance=reranker
-                
-            )
-            print(f"💡 Executing in CODING ASSISTANT mode ({prompt_mode}) with query: {message[:50]}...")
-
-        # Get the streaming response from the query engine
-        streaming_response = current_query_engine.query(full_query)
+            if chat_mode == "Chat":
+                current_query_engine = configure_query_engine(
+                    
+                    index_instance=vector_indices["Coding Assistant"],
+                    llm_instance=llm,
+                    embed_model_instance=embed_model,
+                    prompt_template_instance=selected_prompt_template,
+                    reranker_instance=reranker,
+                    memory=chat_memory_coding
+                    
+                )
+                print(f"💡 Executing in CODING ASSISTANT mode (Chat) ({prompt_mode}) with query: {message[:50]}...")
+                streaming_response = current_query_engine.stream_chat(full_query)
+            else:
+                current_query_engine = configure_query_engine(
+                    
+                    index_instance=vector_indices["Coding Assistant"],
+                    llm_instance=llm,
+                    embed_model_instance=embed_model,
+                    prompt_template_instance=selected_prompt_template,
+                    reranker_instance=reranker,
+                    memory=None
+                    
+                )
+                print(f"💡 Executing in CODING ASSISTANT mode (Classica) ({prompt_mode}) with query: {message[:50]}...")
+                streaming_response = current_query_engine.query(full_query)
 
         
         if hasattr(streaming_response, 'response_gen'):
@@ -291,6 +349,15 @@ with gr.Blocks(theme=themes.Soft()) as demo:
                 interactive=True,
                 visible=False 
             )
+            # AGGIUNTA: selettore modalità classica/chat
+            chat_mode = gr.Radio(
+                ["Classica", "Chat"],
+                value="Classica",
+                label="Modalità conversazione",
+                info="Classica: risposta singola, Chat: memoria conversazionale",
+                visible=True,
+                interactive=True
+            )
 
         
         with gr.Column(scale=3):
@@ -330,7 +397,7 @@ with gr.Blocks(theme=themes.Soft()) as demo:
 
     btn_submit.click(
         fn=process_message,
-        inputs=[domanda_input, chatbot, mode, prompt_mode, codice, response_mode_tutor],
+        inputs=[domanda_input, chatbot, mode, prompt_mode, codice, response_mode_tutor, chat_mode],
         outputs=[chatbot, fonti],
         queue=True 
     ).then(
