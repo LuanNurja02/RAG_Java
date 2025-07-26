@@ -149,22 +149,6 @@ try:
     chat_memory_tutor = ChatMemoryBuffer.from_defaults(token_limit=5000)
     chat_memory_coding = ChatMemoryBuffer.from_defaults(token_limit=5000)
 
-    query_engines["Tutor"] = configure_query_engine(
-        index_instance=vector_indices["Tutor"],
-        llm_instance=llm,
-        embed_model_instance=embed_model,
-        prompt_template_instance=TUTOR_PROMPT,
-        reranker_instance=reranker,
-        memory=chat_memory_tutor
-    )
-    query_engines["Coding Assistant"] = configure_query_engine(
-        index_instance=vector_indices["Coding Assistant"],
-        llm_instance=llm,
-        embed_model_instance=embed_model,
-        prompt_template_instance=SPIEGAZIONE_CODICE_PROMPT,  # default, verrà cambiato runtime
-        reranker_instance=reranker,
-        memory=chat_memory_coding
-    )
 
 except Exception as e:
     print(f"Critical error during global initialization: {str(e)}")
