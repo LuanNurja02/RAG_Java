@@ -21,6 +21,7 @@ from util import (
     OLLAMA_CONTEXT_WINDOW,
     OLLAMA_REQUEST_TIMEOUT,
     TUTOR_PROMPT,
+    QUERY_EXPANSION_PROMPT,
     SPIEGAZIONE_CODICE_PROMPT,
     DEBUG_CODICE_PROMPT,
     CREA_CODICE_PROMPT
@@ -146,14 +147,89 @@ except Exception as e:
     raise
 
 
+def expand_query_if_needed(original_query: str, min_words: int = 3) -> tuple[str, bool, str]:
+    """
+    Espande una query se è troppo corta per migliorare il retrieval.
+    
+    Args:
+        original_query: La query originale dell'utente
+        min_words: Numero minimo di parole per considerare una query "corta"
+    
+    Returns:
+        Tuple: (query_finale, espansione_attivata, messaggio_avviso)
+    """
+    # Conta le parole nella query
+    word_count = len(original_query.strip().split())
+    
+    # Se la query è abbastanza lunga, non espanderla
+    if word_count >= min_words:
+        return original_query, False, ""
+    
+    # Controlla se è un caso limite (1 parola o query molto corta)
+    is_extreme_case = word_count <= 3 or len(original_query.strip()) <= 10
+    
+    if not is_extreme_case:
+        return original_query, False, ""
+    
+    try:
+        # Crea un LLM temporaneo per l'espansione
+        expansion_llm = Ollama(
+            model=OLLAMA_MODEL,
+            temperature=0.1,  # Bassa temperatura per risposte più deterministiche
+            max_tokens=200,   # Limitiamo i token per l'espansione
+            request_timeout=30,
+            context_window=2000,
+            streaming=False,  # Non serve streaming per l'espansione
+            top_p=0.9,
+            repeat_penalty=1.1
+        )
+        
+        # Prepara il prompt per l'espansione
+        expansion_prompt = QUERY_EXPANSION_PROMPT.format(original_query=original_query)
+        
+        # Esegui l'espansione
+        print(f"🔍 Espandendo query molto corta: '{original_query}' ({word_count} parole)")
+        expanded_response = expansion_llm.complete(expansion_prompt)
+        expanded_query = expanded_response.text.strip()
+        
+        # Verifica che l'espansione sia valida
+        if expanded_query and len(expanded_query) > len(original_query):
+            # Pulisci la query espansa da eventuali commenti o spiegazioni
+            cleaned_query = expanded_query.strip()
+            # Rimuovi eventuali virgolette o formattazione extra
+            if cleaned_query.startswith('"') and cleaned_query.endswith('"'):
+                cleaned_query = cleaned_query[1:-1]
+            if cleaned_query.startswith("'") and cleaned_query.endswith("'"):
+                cleaned_query = cleaned_query[1:-1]
+            
+            print(f"✅ Query espansa: '{cleaned_query}'")
+            warning_message = f"⚠️ **La tua query è molto breve.** È stata attivata automaticamente la **Query Expansion** per migliorare i risultati.\n\n**Query originale:** `{original_query}`\n**Query espansa:** `{cleaned_query}`"
+            return cleaned_query, True, warning_message
+        else:
+            print(f"⚠️ Espansione fallita, uso query originale")
+            return original_query, False, ""
+            
+    except Exception as e:
+        print(f"❌ Errore durante l'espansione della query: {str(e)}")
+        return original_query, False, ""
+
+
 def process_message(message: str, history: list, mode: str, prompt_mode: str, codice: str, response_mode_tutor: str, chat_mode: str):
 
     history.append([message, None])
 
+    # Espansione automatica solo in casi limite
+    expanded_message, expansion_activated, warning_message = expand_query_if_needed(message, min_words=3)
+    
+    # Se l'espansione è stata attivata automaticamente, mostra l'avviso
+    if expansion_activated:
+        history[-1][1] = warning_message
+        yield history, ""
+    
     if codice and codice.strip():
-        full_query = f"{message}\n\nCODICE FORNITO:\n```java\n{codice.strip()}\n```"
+        full_query = f"{expanded_message}\n\nCODICE FORNITO:\n```java\n{codice.strip()}\n```"
     else:
-        full_query = message
+        full_query = expanded_message
 
     if not full_query.strip():
         if history and history[-1][0] == message and history[-1][1] is None:
@@ -161,6 +237,11 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
         yield history, "Please enter at least a question or code to analyze."
         return
 
+    # Se l'espansione è stata attivata, aggiungi la risposta dopo l'avviso
+    if expansion_activated:
+        # Aggiungi una nuova entry per la risposta effettiva
+        history.append([f"Query espansa: {expanded_message}", None])
+    
     current_response_text = ""
 
     try:
@@ -223,14 +304,17 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                 print(f"💡 Executing in CODING ASSISTANT mode (Classica) ({prompt_mode}) with query: {message[:50]}...")
                 streaming_response = current_query_engine.query(full_query)
 
+        # Determina l'indice corretto per la risposta
+        response_index = -1 if not expansion_activated else -1
+        
         if hasattr(streaming_response, 'response_gen'):
             for text_chunk in streaming_response.response_gen:
                 current_response_text += text_chunk
-                history[-1][1] = current_response_text
+                history[response_index][1] = current_response_text
                 yield history, ""
         else:
             current_response_text = str(getattr(streaming_response, 'response', streaming_response))
-            history[-1][1] = current_response_text
+            history[response_index][1] = current_response_text
             yield history, ""
 
         sources_output_text = ""
@@ -279,6 +363,7 @@ with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
                 visible=True,
                 interactive=True
             )
+
             response_mode_tutor = gr.Radio(
                 ["Dettagliata", "Sintetica"],
                 value="Dettagliata",
@@ -359,11 +444,11 @@ with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
             [], # chatbot history
             "", # domanda_input
             "", # codice
-            "Le fonti recuperate appariranno qui.", # Restore sources text
-            gr.update(value="Spiegazione", visible=False), # Restore prompt_mode and hide it
+            "Le fonti recuperate appariranno qui.", 
+            gr.update(value="Spiegazione", visible=False), 
             gr.update(value="Tutor"), # Restore mode
-            gr.update(value="Dettagliata", visible=True), # Restore response_mode_tutor to visible and default value
-            gr.update(value="Classica", visible=True) # Restore chat_mode to visible and default value
+            gr.update(value="Dettagliata", visible=True), 
+            gr.update(value="Classica", visible=True) 
         ),
         outputs=[chatbot, domanda_input, codice, fonzi, prompt_mode, mode, response_mode_tutor, chat_mode],
         queue=False

@@ -20,6 +20,16 @@ query: {query_str}
 RISPOSTA DETTAGLIATA:"""
 )
 
+# Prompt per l'espansione di query
+QUERY_EXPANSION_PROMPT = PromptTemplate(
+    """Espandi questa domanda inerente alla teoria e documentazione del linguaggio Java in modo conciso e diretto. 
+    Restituisci SOLO la domanda espansa, senza spiegazioni o commenti aggiuntivi.
+    
+    Query originale: {original_query}
+    
+    Query espansa:"""
+)
+
 SPIEGAZIONE_CODICE_PROMPT = PromptTemplate(
     """Sei un assistente di programmazione Java. Il tuo compito è spiegare dettagliatamente il frammento di codice o la funzionalità a cui la query si riferisce, basandoti sul contesto fornito.
     Spiega la logica, le classi, i metodi e le interazioni.
