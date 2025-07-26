@@ -14,8 +14,6 @@ import gradio as gr
 from llama_index.core.response_synthesizers import ResponseMode
 from gradio import themes
 from llama_index.postprocessor.flag_embedding_reranker import FlagEmbeddingReranker
-
-# Ho rimosso QUERY_EXPANSION_PROMPT dall'importazione da util
 from util import (
     OLLAMA_MODEL,
     OLLAMA_TEMPERATURE,
@@ -31,13 +29,10 @@ from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.chat_engine import ContextChatEngine
 load_dotenv(dotenv_path='pinecone_key.env')
 
-# Indici Pinecone
+
 TUTOR_INDEX_NAME = "meta-lib"
 ASSISTANT_INDEX = "java-codebase"
-
-# Configurazione del modello di embedding
 EMBEDDING_MODEL_NAME = "intfloat/e5-small-v2"
-
 # Re-ranker
 RERANK_MODEL_NAME = "BAAI/bge-reranker-base"
 RERANK_TOP_N = 3  # nodi da usare dopo il re-ranking
@@ -63,7 +58,7 @@ def configure_query_engine(index_instance, llm_instance, prompt_template_instanc
     )
 
     if memory is not None:
-        # Modalità chat: ContextChatEngine
+        # Modalità chat se è impostata la memoria 
         return ContextChatEngine(
             retriever=retriever,
             llm=llm_instance,
@@ -72,7 +67,7 @@ def configure_query_engine(index_instance, llm_instance, prompt_template_instanc
             prefix_messages=[]
         )
     else:
-        # Modalità classica: RetrieverQueryEngine
+        # altrimenti modalità classca q&a
         return RetrieverQueryEngine(
             retriever=retriever,
             response_synthesizer=response_synthesizer,
@@ -147,16 +142,12 @@ except Exception as e:
     print(f"Critical error during global initialization: {str(e)}")
     raise
 
-# Ho rimosso completamente la funzione expand_query_if_needed
 
 def process_message(message: str, history: list, mode: str, prompt_mode: str, codice: str, response_mode_tutor: str, chat_mode: str):
 
     history.append([message, None])
 
-    # La query espansa è ora semplicemente la query originale
-    # Ho rimosso: expanded_message, expansion_activated, warning_message = expand_query_if_needed(message, min_words=3)
-    # E anche: if expansion_activated: ...
-    final_query = message # Usiamo direttamente la query originale
+    final_query = message 
 
     if codice and codice.strip():
         full_query = f"{final_query}\n\nCODICE FORNITO:\n```java\n{codice.strip()}\n```"
@@ -164,13 +155,15 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
         full_query = final_query
 
     if not full_query.strip():
-        if history and history[-1][0] == message and history[-1][1] is None:
+        if (
+            history
+            and history[-1][0] == final_query
+            and history[-1][1] is None
+        ):
             history.pop()
         yield history, "Please enter at least a question or code to analyze."
         return
 
-    # Ho rimosso: if expansion_activated: ... history.append(...)
-    
     current_response_text = ""
 
     try:
@@ -186,7 +179,7 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                     response_mode=ResponseMode.COMPACT,
                     memory=chat_memory_tutor
                 )
-                print(f"💡 Executing in TUTOR mode (Chat) with query: {message[:50]}...")
+                print(f"💡 Executing in TUTOR mode (Chat) with query: {final_query[:50]}...")
                 streaming_response = current_query_engine.stream_chat(full_query)
             else:
                 current_query_engine = configure_query_engine(
@@ -197,7 +190,9 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                     response_mode=selected_response_mode,
                     memory=None
                 )
-                print(f"💡 Executing in TUTOR mode (Classica) with query: {message[:50]}... (ResponseMode: {response_mode_tutor})")
+                print(
+                    f"💡 Executing in TUTOR mode (Classica) with query: {final_query[:50]}... (ResponseMode: {response_mode_tutor})"
+                )
                 streaming_response = current_query_engine.query(full_query)
         else: # mode == "Coding Assistant"
             if prompt_mode == "Spiegazione":
@@ -217,7 +212,9 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                     reranker_instance=reranker,
                     memory=chat_memory_coding
                 )
-                print(f"💡 Executing in CODING ASSISTANT mode (Chat) ({prompt_mode}) with query: {message[:50]}...")
+                print(
+                    f"💡 Executing in CODING ASSISTANT mode (Chat) ({prompt_mode}) with query: {final_query[:50]}..."
+                )
                 streaming_response = current_query_engine.stream_chat(full_query)
             else:
                 current_query_engine = configure_query_engine(
@@ -227,13 +224,14 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                     reranker_instance=reranker,
                     memory=None
                 )
-                print(f"💡 Executing in CODING ASSISTANT mode (Classica) ({prompt_mode}) with query: {message[:50]}...")
+                print(
+                    f"💡 Executing in CODING ASSISTANT mode (Classica) ({prompt_mode}) with query: {final_query[:50]}..."
+                )
                 streaming_response = current_query_engine.query(full_query)
 
-        # Determina l'indice corretto per la risposta (sempre -1 ora)
-        # Ho rimosso: response_index = -1 if not expansion_activated else -1
-        response_index = -1 
         
+        response_index = -1 
+
         if hasattr(streaming_response, 'response_gen'):
             for text_chunk in streaming_response.response_gen:
                 current_response_text += text_chunk
