@@ -1,5 +1,4 @@
 import os
-import time
 from dotenv import load_dotenv
 from pinecone import Pinecone
 from llama_index.vector_stores.pinecone import PineconeVectorStore
@@ -42,13 +41,10 @@ RERANK_MODEL_NAME = "BAAI/bge-reranker-base"
 RERANK_TOP_N = 3  # nodi da usare dopo il re-ranking
 
 # Funzione per Configurare il Query Engine
-# AGGIUNTA: response_mode come parametro
-
-def configure_query_engine(index_instance, llm_instance, embed_model_instance, prompt_template_instance, reranker_instance, response_mode=ResponseMode.COMPACT, memory=None):
+def configure_query_engine(index_instance, llm_instance, prompt_template_instance, reranker_instance, response_mode=ResponseMode.COMPACT, memory=None):
     retriever = VectorIndexRetriever(
         index=index_instance,
         similarity_top_k=10,
-        embed_model=embed_model_instance,
         sparse_top_k=2
     )
 
@@ -61,8 +57,7 @@ def configure_query_engine(index_instance, llm_instance, embed_model_instance, p
         llm=llm_instance,
         streaming=True,
         response_mode=response_mode,
-        text_qa_template=prompt_template_instance,
-        use_async=False
+        text_qa_template=prompt_template_instance
     )
 
     if memory is not None:
@@ -92,7 +87,6 @@ llm = None
 embed_model = None
 reranker = None
 vector_indices = {}
-query_engines = {}
 
 try:
     torch.cuda.empty_cache()
@@ -134,7 +128,6 @@ try:
         storage_context=storage_context_tutor
     )
 
-
     pinecone_index_coding_assistant = pc.Index(ASSISTANT_INDEX)
     vector_store_coding_assistant = PineconeVectorStore(pinecone_index=pinecone_index_coding_assistant)
     storage_context_coding_assistant = StorageContext.from_defaults(vector_store=vector_store_coding_assistant)
@@ -144,27 +137,9 @@ try:
         storage_context=storage_context_coding_assistant
     )
 
-
     # Inizializza le memorie globali per Tutor e Coding Assistant
     chat_memory_tutor = ChatMemoryBuffer.from_defaults(token_limit=5000)
     chat_memory_coding = ChatMemoryBuffer.from_defaults(token_limit=5000)
-
-    query_engines["Tutor"] = configure_query_engine(
-        index_instance=vector_indices["Tutor"],
-        llm_instance=llm,
-        embed_model_instance=embed_model,
-        prompt_template_instance=TUTOR_PROMPT,
-        reranker_instance=reranker,
-        memory=chat_memory_tutor
-    )
-    query_engines["Coding Assistant"] = configure_query_engine(
-        index_instance=vector_indices["Coding Assistant"],
-        llm_instance=llm,
-        embed_model_instance=embed_model,
-        prompt_template_instance=SPIEGAZIONE_CODICE_PROMPT,  # default, verrà cambiato runtime
-        reranker_instance=reranker,
-        memory=chat_memory_coding
-    )
 
 except Exception as e:
     print(f"Critical error during global initialization: {str(e)}")
@@ -175,8 +150,7 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
 
     history.append([message, None])
 
-    codice = codice if codice is not None else ""
-    if codice.strip():
+    if codice and codice.strip():
         full_query = f"{message}\n\nCODICE FORNITO:\n```java\n{codice.strip()}\n```"
     else:
         full_query = message
@@ -188,7 +162,6 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
         return
 
     current_response_text = ""
-    sources_output_text = ""
 
     try:
         if mode == "Tutor":
@@ -200,10 +173,9 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                 current_query_engine = configure_query_engine(
                     index_instance=vector_indices["Tutor"],
                     llm_instance=llm,
-                    embed_model_instance=embed_model,
                     prompt_template_instance=TUTOR_PROMPT,
                     reranker_instance=reranker,
-                    response_mode=ResponseMode.COMPACT, # Sempre COMPACT in modalità chat
+                    response_mode=ResponseMode.COMPACT,
                     memory=chat_memory_tutor
                 )
                 print(f"💡 Executing in TUTOR mode (Chat) with query: {message[:50]}...")
@@ -213,7 +185,6 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                 current_query_engine = configure_query_engine(
                     index_instance=vector_indices["Tutor"],
                     llm_instance=llm,
-                    embed_model_instance=embed_model,
                     prompt_template_instance=TUTOR_PROMPT,
                     reranker_instance=reranker,
                     response_mode=selected_response_mode,
@@ -235,7 +206,6 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                 current_query_engine = configure_query_engine(
                     index_instance=vector_indices["Coding Assistant"],
                     llm_instance=llm,
-                    embed_model_instance=embed_model,
                     prompt_template_instance=selected_prompt_template,
                     reranker_instance=reranker,
                     memory=chat_memory_coding
@@ -246,7 +216,6 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                 current_query_engine = configure_query_engine(
                     index_instance=vector_indices["Coding Assistant"],
                     llm_instance=llm,
-                    embed_model_instance=embed_model,
                     prompt_template_instance=selected_prompt_template,
                     reranker_instance=reranker,
                     memory=None
@@ -264,6 +233,7 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
             history[-1][1] = current_response_text
             yield history, ""
 
+        sources_output_text = ""
         if hasattr(streaming_response, 'source_nodes') and streaming_response.source_nodes:
             sources_output_text += "### Documenti di Riferimento Utilizzati\n"
             for i, node in enumerate(streaming_response.source_nodes):
@@ -400,3 +370,5 @@ with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
     )
 
 demo.launch()
+
+
