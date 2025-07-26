@@ -14,6 +14,8 @@ import gradio as gr
 from llama_index.core.response_synthesizers import ResponseMode
 from gradio import themes
 from llama_index.postprocessor.flag_embedding_reranker import FlagEmbeddingReranker
+
+# Ho rimosso QUERY_EXPANSION_PROMPT dall'importazione da util
 from util import (
     OLLAMA_MODEL,
     OLLAMA_TEMPERATURE,
@@ -21,7 +23,6 @@ from util import (
     OLLAMA_CONTEXT_WINDOW,
     OLLAMA_REQUEST_TIMEOUT,
     TUTOR_PROMPT,
-    QUERY_EXPANSION_PROMPT,
     SPIEGAZIONE_CODICE_PROMPT,
     DEBUG_CODICE_PROMPT,
     CREA_CODICE_PROMPT
@@ -146,90 +147,21 @@ except Exception as e:
     print(f"Critical error during global initialization: {str(e)}")
     raise
 
-
-def expand_query_if_needed(original_query: str, min_words: int = 3) -> tuple[str, bool, str]:
-    """
-    Espande una query se è troppo corta per migliorare il retrieval.
-    
-    Args:
-        original_query: La query originale dell'utente
-        min_words: Numero minimo di parole per considerare una query "corta"
-    
-    Returns:
-        Tuple: (query_finale, espansione_attivata, messaggio_avviso)
-    """
-    # Conta le parole nella query
-    word_count = len(original_query.strip().split())
-    
-    # Se la query è abbastanza lunga, non espanderla
-    if word_count >= min_words:
-        return original_query, False, ""
-    
-    # Controlla se è un caso limite (1 parola o query molto corta)
-    is_extreme_case = word_count <= 3 or len(original_query.strip()) <= 10
-    
-    if not is_extreme_case:
-        return original_query, False, ""
-    
-    try:
-        # Crea un LLM temporaneo per l'espansione
-        expansion_llm = Ollama(
-            model=OLLAMA_MODEL,
-            temperature=0.1,  # Bassa temperatura per risposte più deterministiche
-            max_tokens=200,   # Limitiamo i token per l'espansione
-            request_timeout=30,
-            context_window=2000,
-            streaming=False,  # Non serve streaming per l'espansione
-            top_p=0.9,
-            repeat_penalty=1.1
-        )
-        
-        # Prepara il prompt per l'espansione
-        expansion_prompt = QUERY_EXPANSION_PROMPT.format(original_query=original_query)
-        
-        # Esegui l'espansione
-        print(f"🔍 Espandendo query molto corta: '{original_query}' ({word_count} parole)")
-        expanded_response = expansion_llm.complete(expansion_prompt)
-        expanded_query = expanded_response.text.strip()
-        
-        # Verifica che l'espansione sia valida
-        if expanded_query and len(expanded_query) > len(original_query):
-            # Pulisci la query espansa da eventuali commenti o spiegazioni
-            cleaned_query = expanded_query.strip()
-            # Rimuovi eventuali virgolette o formattazione extra
-            if cleaned_query.startswith('"') and cleaned_query.endswith('"'):
-                cleaned_query = cleaned_query[1:-1]
-            if cleaned_query.startswith("'") and cleaned_query.endswith("'"):
-                cleaned_query = cleaned_query[1:-1]
-            
-            print(f"✅ Query espansa: '{cleaned_query}'")
-            warning_message = f"⚠️ **La tua query è molto breve.** È stata attivata automaticamente la **Query Expansion** per migliorare i risultati.\n\n**Query originale:** `{original_query}`\n**Query espansa:** `{cleaned_query}`"
-            return cleaned_query, True, warning_message
-        else:
-            print(f"⚠️ Espansione fallita, uso query originale")
-            return original_query, False, ""
-            
-    except Exception as e:
-        print(f"❌ Errore durante l'espansione della query: {str(e)}")
-        return original_query, False, ""
-
+# Ho rimosso completamente la funzione expand_query_if_needed
 
 def process_message(message: str, history: list, mode: str, prompt_mode: str, codice: str, response_mode_tutor: str, chat_mode: str):
 
     history.append([message, None])
 
-    # Espansione automatica solo in casi limite
-    expanded_message, expansion_activated, warning_message = expand_query_if_needed(message, min_words=3)
-    
-    # Se l'espansione è stata attivata automaticamente, mostra l'avviso
-    if expansion_activated:
-        history[-1][1] = warning_message
-        yield history, ""
-    
+    # La query espansa è ora semplicemente la query originale
+    # Ho rimosso: expanded_message, expansion_activated, warning_message = expand_query_if_needed(message, min_words=3)
+    # E anche: if expansion_activated: ...
+    final_query = message # Usiamo direttamente la query originale
+
     if codice and codice.strip():
-        full_query = f"{expanded_message}\n\nCODICE FORNITO:\n```java\n{codice.strip()}\n```"
+        full_query = f"{final_query}\n\nCODICE FORNITO:\n```java\n{codice.strip()}\n```"
     else:
-        full_query = expanded_message
+        full_query = final_query
 
     if not full_query.strip():
         if history and history[-1][0] == message and history[-1][1] is None:
@@ -237,20 +169,15 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
         yield history, "Please enter at least a question or code to analyze."
         return
 
-    # Se l'espansione è stata attivata, aggiungi la risposta dopo l'avviso
-    if expansion_activated:
-        # Aggiungi una nuova entry per la risposta effettiva
-        history.append([f"Query espansa: {expanded_message}", None])
+    # Ho rimosso: if expansion_activated: ... history.append(...)
     
     current_response_text = ""
 
     try:
         if mode == "Tutor":
-            # Prendi la modalità di risposta scelta, solo se chat_mode è "Classica"
             selected_response_mode = RESPONSE_MODE_MAP.get(response_mode_tutor, ResponseMode.COMPACT) if chat_mode == "Classica" else ResponseMode.COMPACT
 
             if chat_mode == "Chat":
-                # Usa ContextChatEngine con memoria
                 current_query_engine = configure_query_engine(
                     index_instance=vector_indices["Tutor"],
                     llm_instance=llm,
@@ -262,7 +189,6 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                 print(f"💡 Executing in TUTOR mode (Chat) with query: {message[:50]}...")
                 streaming_response = current_query_engine.stream_chat(full_query)
             else:
-                # Usa RetrieverQueryEngine senza memoria, con response_synthesizer custom
                 current_query_engine = configure_query_engine(
                     index_instance=vector_indices["Tutor"],
                     llm_instance=llm,
@@ -273,7 +199,7 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                 )
                 print(f"💡 Executing in TUTOR mode (Classica) with query: {message[:50]}... (ResponseMode: {response_mode_tutor})")
                 streaming_response = current_query_engine.query(full_query)
-        else:  # mode == "Coding Assistant"
+        else: # mode == "Coding Assistant"
             if prompt_mode == "Spiegazione":
                 selected_prompt_template = SPIEGAZIONE_CODICE_PROMPT
             elif prompt_mode == "Debug":
@@ -281,7 +207,7 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
             elif prompt_mode == "Crea":
                 selected_prompt_template = CREA_CODICE_PROMPT
             else:
-                selected_prompt_template = SPIEGAZIONE_CODICE_PROMPT  # DEFAULT for Coding Assistant
+                selected_prompt_template = SPIEGAZIONE_CODICE_PROMPT # DEFAULT for Coding Assistant
 
             if chat_mode == "Chat":
                 current_query_engine = configure_query_engine(
@@ -304,8 +230,9 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                 print(f"💡 Executing in CODING ASSISTANT mode (Classica) ({prompt_mode}) with query: {message[:50]}...")
                 streaming_response = current_query_engine.query(full_query)
 
-        # Determina l'indice corretto per la risposta
-        response_index = -1 if not expansion_activated else -1
+        # Determina l'indice corretto per la risposta (sempre -1 ora)
+        # Ho rimosso: response_index = -1 if not expansion_activated else -1
+        response_index = -1 
         
         if hasattr(streaming_response, 'response_gen'):
             for text_chunk in streaming_response.response_gen:
@@ -455,5 +382,3 @@ with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
     )
 
 demo.launch()
-
-
