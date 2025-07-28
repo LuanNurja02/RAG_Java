@@ -41,12 +41,11 @@ RERANK_TOP_N = 3  # nodi da usare dopo il re-ranking
 def configure_query_engine(index_instance, llm_instance, prompt_template_instance, reranker_instance, response_mode=ResponseMode.COMPACT, memory=None):
     retriever = VectorIndexRetriever(
         index=index_instance,
-        similarity_top_k=10,
-        sparse_top_k=2
+        similarity_top_k=10
     )
 
     node_postprocessors = [
-        SimilarityPostprocessor(similarity_cutoff=0.80),
+        SimilarityPostprocessor(similarity_cutoff=0.75),
         reranker_instance
     ]
 
@@ -80,7 +79,8 @@ RESPONSE_MODE_MAP = {
     "Sintetica": ResponseMode.TREE_SUMMARIZE
 }
 
-llm = None
+llm_tutor = None
+llm_coding = None
 embed_model = None
 reranker = None
 vector_indices = {}
@@ -104,9 +104,23 @@ try:
         top_n=RERANK_TOP_N
     )
 
-    llm = Ollama(
-        model=OLLAMA_MODEL,
+    # LLM per Tutor (generalista)
+    llm_tutor = Ollama(
+        model=OLLAMA_MODEL,  # es: "llama3.1:8b"
         temperature=OLLAMA_TEMPERATURE,
+        max_tokens=OLLAMA_MAX_TOKENS,
+        request_timeout=OLLAMA_REQUEST_TIMEOUT,
+        context_window=OLLAMA_CONTEXT_WINDOW,
+        streaming=True,
+        min_length=100,
+        top_p=0.9,
+        repeat_penalty=1.2
+    )
+
+    # LLM per Coding Assistant (esperto in codice)
+    llm_coding = Ollama(
+        model="codellama:7b",  # Modello più leggero che richiede meno memoria
+        temperature=0.1,
         max_tokens=OLLAMA_MAX_TOKENS,
         request_timeout=OLLAMA_REQUEST_TIMEOUT,
         context_window=OLLAMA_CONTEXT_WINDOW,
@@ -172,45 +186,49 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
 
             if chat_mode == "Chat":
                 current_query_engine = configure_query_engine(
+
                     index_instance=vector_indices["Tutor"],
-                    llm_instance=llm,
+                    llm_instance=llm_tutor,  # Usa LLM Tutor
                     prompt_template_instance=TUTOR_PROMPT,
                     reranker_instance=reranker,
                     response_mode=ResponseMode.COMPACT,
                     memory=chat_memory_tutor
+
                 )
                 print(f"💡 Executing in TUTOR mode (Chat) with query: {final_query[:50]}...")
                 streaming_response = current_query_engine.stream_chat(full_query)
             else:
                 current_query_engine = configure_query_engine(
+
                     index_instance=vector_indices["Tutor"],
-                    llm_instance=llm,
+                    llm_instance=llm_tutor,  # Usa LLM Tutor
                     prompt_template_instance=TUTOR_PROMPT,
                     reranker_instance=reranker,
                     response_mode=selected_response_mode,
                     memory=None
+
                 )
                 print(
                     f"💡 Executing in TUTOR mode (Classica) with query: {final_query[:50]}... (ResponseMode: {response_mode_tutor})"
                 )
                 streaming_response = current_query_engine.query(full_query)
         else: # mode == "Coding Assistant"
-            if prompt_mode == "Spiegazione":
-                selected_prompt_template = SPIEGAZIONE_CODICE_PROMPT
+            if prompt_mode == "Crea":
+                selected_prompt_template = CREA_CODICE_PROMPT
             elif prompt_mode == "Debug":
                 selected_prompt_template = DEBUG_CODICE_PROMPT
-            elif prompt_mode == "Crea":
-                selected_prompt_template = CREA_CODICE_PROMPT
             else:
                 selected_prompt_template = SPIEGAZIONE_CODICE_PROMPT # DEFAULT for Coding Assistant
 
             if chat_mode == "Chat":
                 current_query_engine = configure_query_engine(
+
                     index_instance=vector_indices["Coding Assistant"],
-                    llm_instance=llm,
+                    llm_instance=llm_coding,  # Usa LLM Coding Assistant
                     prompt_template_instance=selected_prompt_template,
                     reranker_instance=reranker,
                     memory=chat_memory_coding
+
                 )
                 print(
                     f"💡 Executing in CODING ASSISTANT mode (Chat) ({prompt_mode}) with query: {final_query[:50]}..."
@@ -218,18 +236,20 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                 streaming_response = current_query_engine.stream_chat(full_query)
             else:
                 current_query_engine = configure_query_engine(
+
                     index_instance=vector_indices["Coding Assistant"],
-                    llm_instance=llm,
+                    llm_instance=llm_coding,  # Usa LLM Coding Assistant
                     prompt_template_instance=selected_prompt_template,
                     reranker_instance=reranker,
                     memory=None
+
                 )
                 print(
                     f"💡 Executing in CODING ASSISTANT mode (Classica) ({prompt_mode}) with query: {final_query[:50]}..."
                 )
                 streaming_response = current_query_engine.query(full_query)
 
-        
+
         response_index = -1 
 
         if hasattr(streaming_response, 'response_gen'):
