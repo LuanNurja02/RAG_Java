@@ -1,0 +1,16 @@
+# Core RAG Framework
+llama-index>=0.10.0
+llama-index-embeddings-huggingface>=0.1.0
+llama-index-llms-ollama>=0.1.0
+llama-index-vector-stores-pinecone>=0.1.0
+llama-index-postprocessor-flag-embedding-reranker>=0.1.0
+pinecone-client>=3.0.0
+sentence-transformers>=2.2.0
+transformers>=4.30.0
+FlagEmbedding>=1.2.0
+gradio>=4.0.0
+PyMuPDF>=1.23.0
+tree-sitter>=0.20.0
+python-dotenv>=1.0.0
+torch>=2.0.0
+numpy>=1.24.0 
