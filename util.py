@@ -65,8 +65,6 @@ CODICE JAVA GENERATO:"""
 
 
 
-
-
 def export_to_pdf(history):
     """
     Esporta la conversazione in PDF
