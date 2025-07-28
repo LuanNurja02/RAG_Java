@@ -23,12 +23,13 @@ from util import (
     TUTOR_PROMPT,
     SPIEGAZIONE_CODICE_PROMPT,
     DEBUG_CODICE_PROMPT,
-    CREA_CODICE_PROMPT
+    CREA_CODICE_PROMPT,
+    export_to_pdf
 )
 from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.chat_engine import ContextChatEngine
-load_dotenv(dotenv_path='pinecone_key.env')
 
+load_dotenv(dotenv_path='pinecone_key.env')
 
 TUTOR_INDEX_NAME = "meta-lib"
 ASSISTANT_INDEX = "java-codebase"
@@ -104,7 +105,7 @@ try:
         top_n=RERANK_TOP_N
     )
 
-    # LLM per Tutor (generalista)
+    # LLM per Tutor
     llm_tutor = Ollama(
         model=OLLAMA_MODEL,  # es: "llama3.1:8b"
         temperature=OLLAMA_TEMPERATURE,
@@ -117,7 +118,7 @@ try:
         repeat_penalty=1.2
     )
 
-    # LLM per Coding Assistant (esperto in codice)
+    # LLM per Coding Assistant
     llm_coding = Ollama(
         model="codellama:7b",  # Modello più leggero che richiede meno memoria
         temperature=0.1,
@@ -175,7 +176,7 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
             and history[-1][1] is None
         ):
             history.pop()
-        yield history, "Please enter at least a question or code to analyze."
+        yield history
         return
 
     current_response_text = ""
@@ -256,30 +257,36 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
             for text_chunk in streaming_response.response_gen:
                 current_response_text += text_chunk
                 history[response_index][1] = current_response_text
-                yield history, ""
+                yield history
         else:
             current_response_text = str(getattr(streaming_response, 'response', streaming_response))
             history[response_index][1] = current_response_text
-            yield history, ""
+            yield history
 
-        sources_output_text = ""
         if hasattr(streaming_response, 'source_nodes') and streaming_response.source_nodes:
-            sources_output_text += "### Documenti di Riferimento Utilizzati\n"
+            # Stampa i documenti recuperati nel terminale
+            print("\n" + "="*80)
+            print("DOCUMENTI DI RIFERIMENTO UTILIZZATI")
+            print("="*80)
             for i, node in enumerate(streaming_response.source_nodes):
                 score = getattr(node, "score", None)
                 content_preview = node.get_content()
                 if len(content_preview) > 500:
                     content_preview = content_preview[:500] + "...\n(Contenuto troncato)"
                 score_str = f"Score: {score:.3f}" if score is not None else "Score: N/A"
-                sources_output_text += f"**[{i+1}] {score_str}**\n```\n{content_preview}\n```\n\n"
+                print(f"\n📄 DOCUMENTO [{i+1}] {score_str}")
+                print("-" * 60)
+                print(content_preview)
+                print("-" * 60)
+            print("="*80 + "\n")
 
-        yield history, sources_output_text
+        yield history
 
     except Exception as e:
         error_message = f"Si è verificato un errore: {str(e)}\nPer favore riprova."
         print(f"Error processing query: {str(e)}")
         history[-1][1] = error_message
-        yield history, ""
+        yield history
 
 
 # Gradio Interface
@@ -339,7 +346,6 @@ with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
                 elem_id="chatbot",
                 height=500
             )
-            fonzi = gr.Markdown(label="Documenti di Riferimento Utilizzati", value="Le fonti recuperate appariranno qui.")
 
             with gr.Row():
                 domanda_input = gr.Textbox(
@@ -353,6 +359,11 @@ with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
                 with gr.Column(scale=2, min_width=100):
                     btn_submit = gr.Button("Invia", variant="primary", icon="DATA/gui_icon/coffee.png")
                     btn_clear = gr.Button("Cancella", variant="secondary", icon="DATA/gui_icon/trash.png")
+                    btn_export = gr.Button("📄 Esporta PDF", variant="secondary")
+
+    # File download component 
+    pdf_download = gr.File(label="Scarica PDF", visible=False)
+    export_status = gr.Markdown(value="", visible=False)
 
     mode.change(
         fn=lambda selected_mode: (
@@ -365,7 +376,6 @@ with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
         queue=False
     )
 
-    # New event listener for chat_mode to control response_mode_tutor visibility
     chat_mode.change(
         fn=lambda selected_chat_mode, current_mode: gr.update(visible=selected_chat_mode == "Classica" and current_mode == "Tutor"),
         inputs=[chat_mode, mode],
@@ -376,7 +386,7 @@ with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
     btn_submit.click(
         fn=process_message,
         inputs=[domanda_input, chatbot, mode, prompt_mode, codice, response_mode_tutor, chat_mode],
-        outputs=[chatbot, fonzi],
+        outputs=[chatbot],
         queue=True
     ).then(
         lambda: "",
@@ -389,13 +399,35 @@ with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
             [], # chatbot history
             "", # domanda_input
             "", # codice
-            "Le fonti recuperate appariranno qui.", 
             gr.update(value="Spiegazione", visible=False), 
             gr.update(value="Tutor"), # Restore mode
             gr.update(value="Dettagliata", visible=True), 
-            gr.update(value="Classica", visible=True) 
+            gr.update(value="Classica", visible=True),
+            gr.update(visible=False), # pdf_download
+            gr.update(value="", visible=False) # export_status
         ),
-        outputs=[chatbot, domanda_input, codice, fonzi, prompt_mode, mode, response_mode_tutor, chat_mode],
+        outputs=[chatbot, domanda_input, codice, prompt_mode, mode, response_mode_tutor, chat_mode, pdf_download, export_status],
+        queue=False
+    )
+
+    # Export PDF functionality
+    def handle_export(history):
+        filename, message = export_to_pdf(history)
+        if filename:
+            return (
+                gr.update(value=filename, visible=True),
+                gr.update(value=f" {message}", visible=True)
+            )
+        else:
+            return (
+                gr.update(visible=False), 
+                gr.update(value=f" {message}", visible=True)
+            )
+
+    btn_export.click(
+        fn=handle_export,
+        inputs=[chatbot],
+        outputs=[pdf_download, export_status],
         queue=False
     )
 
