@@ -124,7 +124,7 @@ try:
         max_tokens=OLLAMA_MAX_TOKENS,
         request_timeout=OLLAMA_REQUEST_TIMEOUT,
         context_window=OLLAMA_CONTEXT_WINDOW,
-        streaming=True,
+        streaming=False,  # Disabilitato per testare il problema nella modalità chat
         min_length=100,
         top_p=0.9,
         repeat_penalty=1.2
