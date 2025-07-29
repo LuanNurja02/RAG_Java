@@ -28,6 +28,8 @@ from util import (
 )
 from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.chat_engine import ContextChatEngine
+import json
+import datetime
 
 load_dotenv(dotenv_path='pinecone_key.env')
 
@@ -58,7 +60,7 @@ def configure_query_engine(index_instance, llm_instance, prompt_template_instanc
     )
 
     if memory is not None:
-        # Modalità chat se è impostata la memoria 
+        # Modalità chat se è impostata la memoria
         return ContextChatEngine(
             retriever=retriever,
             llm=llm_instance,
@@ -157,12 +159,13 @@ except Exception as e:
     print(f"Critical error during global initialization: {str(e)}")
     raise
 
+# Global variable to store the last response for feedback
+last_response_info = {}
 
 def process_message(message: str, history: list, mode: str, prompt_mode: str, codice: str, response_mode_tutor: str, chat_mode: str):
-
     history.append([message, None])
 
-    final_query = message 
+    final_query = message
 
     if codice and codice.strip():
         full_query = f"{final_query}\n\nCODICE FORNITO:\n```java\n{codice.strip()}\n```"
@@ -180,6 +183,8 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
         return
 
     current_response_text = ""
+    global last_response_info
+    last_response_info = {} # Reset for new query
 
     try:
         if mode == "Tutor":
@@ -187,27 +192,23 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
 
             if chat_mode == "Chat":
                 current_query_engine = configure_query_engine(
-
                     index_instance=vector_indices["Tutor"],
                     llm_instance=llm_tutor,  # Usa LLM Tutor
                     prompt_template_instance=TUTOR_PROMPT,
                     reranker_instance=reranker,
                     response_mode=ResponseMode.COMPACT,
                     memory=chat_memory_tutor
-
                 )
                 print(f"💡 Executing in TUTOR mode (Chat) with query: {final_query[:50]}...")
                 streaming_response = current_query_engine.stream_chat(full_query)
             else:
                 current_query_engine = configure_query_engine(
-
                     index_instance=vector_indices["Tutor"],
                     llm_instance=llm_tutor,  # Usa LLM Tutor
                     prompt_template_instance=TUTOR_PROMPT,
                     reranker_instance=reranker,
                     response_mode=selected_response_mode,
                     memory=None
-
                 )
                 print(
                     f"💡 Executing in TUTOR mode (Classica) with query: {final_query[:50]}... (ResponseMode: {response_mode_tutor})"
@@ -223,13 +224,11 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
 
             if chat_mode == "Chat":
                 current_query_engine = configure_query_engine(
-
                     index_instance=vector_indices["Coding Assistant"],
                     llm_instance=llm_coding,  # Usa LLM Coding Assistant
                     prompt_template_instance=selected_prompt_template,
                     reranker_instance=reranker,
                     memory=chat_memory_coding
-
                 )
                 print(
                     f"💡 Executing in CODING ASSISTANT mode (Chat) ({prompt_mode}) with query: {final_query[:50]}..."
@@ -237,21 +236,18 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                 streaming_response = current_query_engine.stream_chat(full_query)
             else:
                 current_query_engine = configure_query_engine(
-
                     index_instance=vector_indices["Coding Assistant"],
                     llm_instance=llm_coding,  # Usa LLM Coding Assistant
                     prompt_template_instance=selected_prompt_template,
                     reranker_instance=reranker,
                     memory=None
-
                 )
                 print(
                     f"💡 Executing in CODING ASSISTANT mode (Classica) ({prompt_mode}) with query: {final_query[:50]}..."
                 )
                 streaming_response = current_query_engine.query(full_query)
 
-
-        response_index = -1 
+        response_index = -1
 
         if hasattr(streaming_response, 'response_gen'):
             for text_chunk in streaming_response.response_gen:
@@ -262,6 +258,19 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
             current_response_text = str(getattr(streaming_response, 'response', streaming_response))
             history[response_index][1] = current_response_text
             yield history
+
+        # Store information about the last response for feedback
+        last_response_info = {
+            "timestamp": datetime.datetime.now().isoformat(),
+            "query": full_query,
+            "response": current_response_text,
+            "mode": mode,
+            "prompt_mode": prompt_mode if mode == "Coding Assistant" else None,
+            "response_mode_tutor": response_mode_tutor if mode == "Tutor" else None,
+            "chat_mode": chat_mode,
+            "feedback_rating": None, # Will be filled by feedback function
+            "source_nodes": []
+        }
 
         if hasattr(streaming_response, 'source_nodes') and streaming_response.source_nodes:
             # Stampa i documenti recuperati nel terminale
@@ -278,6 +287,12 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                 print("-" * 60)
                 print(content_preview)
                 print("-" * 60)
+                
+                # Store source nodes info
+                last_response_info["source_nodes"].append({
+                    "content_preview": content_preview,
+                    "score": score
+                })
             print("="*80 + "\n")
 
         yield history
@@ -287,6 +302,36 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
         print(f"Error processing query: {str(e)}")
         history[-1][1] = error_message
         yield history
+
+def save_feedback(rating: int):
+    global last_response_info
+    if not last_response_info:
+        return "Nessuna risposta precedente da valutare."
+
+    last_response_info["feedback_rating"] = rating
+    
+    # Ensure a directory for feedback exists
+    feedback_dir = "feedback"
+    os.makedirs(feedback_dir, exist_ok=True)
+    
+    feedback_filename = os.path.join(feedback_dir, "feedback.json")
+    
+    feedback_data = []
+    if os.path.exists(feedback_filename):
+        with open(feedback_filename, 'r', encoding='utf-8') as f:
+            try:
+                feedback_data = json.load(f)
+            except json.JSONDecodeError:
+                feedback_data = [] # Handle empty or malformed JSON
+
+    feedback_data.append(last_response_info)
+
+    with open(feedback_filename, 'w', encoding='utf-8') as f:
+        json.dump(feedback_data, f, indent=4, ensure_ascii=False)
+    
+    # Reset last_response_info after saving
+    last_response_info = {}
+    return f"Grazie per il tuo feedback! Voto: {rating} stella/e salvato."
 
 
 # Gradio Interface
@@ -360,8 +405,22 @@ with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
                     btn_submit = gr.Button("Invia", variant="primary", icon="DATA/gui_icon/coffee.png")
                     btn_clear = gr.Button("Cancella", variant="secondary", icon="DATA/gui_icon/trash.png")
                     btn_export = gr.Button("📄 Esporta PDF", variant="secondary")
+            
+            # Feedback Section
+            gr.Markdown("### Valuta l'ultima risposta")
+            with gr.Row():
+                feedback_rating = gr.Radio(
+                    choices=[1, 2, 3, 4, 5],
+                    label="Voto (1-5 Stelle)",
+                    type="value",
+                    visible=False, # Initially hidden
+                    interactive=True
+                )
+                btn_feedback = gr.Button("Invia Feedback", visible=False, variant="secondary")
+            feedback_status = gr.Markdown(value="", visible=False)
 
-    # File download component 
+
+    # File download component
     pdf_download = gr.File(label="Scarica PDF", visible=False)
     export_status = gr.Markdown(value="", visible=False)
 
@@ -389,9 +448,13 @@ with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
         outputs=[chatbot],
         queue=True
     ).then(
-        lambda: "",
+        lambda: (
+            "", # Clear input
+            gr.update(visible=True), # Show feedback rating
+            gr.update(visible=True) # Show feedback button
+        ),
         inputs=None,
-        outputs=[domanda_input]
+        outputs=[domanda_input, feedback_rating, btn_feedback]
     )
 
     btn_clear.click(
@@ -399,14 +462,21 @@ with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
             [], # chatbot history
             "", # domanda_input
             "", # codice
-            gr.update(value="Spiegazione", visible=False), 
+            gr.update(value="Spiegazione", visible=False),
             gr.update(value="Tutor"), # Restore mode
-            gr.update(value="Dettagliata", visible=True), 
+            gr.update(value="Dettagliata", visible=True),
             gr.update(value="Classica", visible=True),
             gr.update(visible=False), # pdf_download
-            gr.update(value="", visible=False) # export_status
+            gr.update(value="", visible=False), # export_status
+            gr.update(value=None, visible=False), # Clear feedback rating
+            gr.update(visible=False), # Hide feedback button
+            gr.update(value="", visible=False) # Clear feedback status
         ),
-        outputs=[chatbot, domanda_input, codice, prompt_mode, mode, response_mode_tutor, chat_mode, pdf_download, export_status],
+        outputs=[
+            chatbot, domanda_input, codice, prompt_mode, mode,
+            response_mode_tutor, chat_mode, pdf_download, export_status,
+            feedback_rating, btn_feedback, feedback_status
+        ],
         queue=False
     )
 
@@ -420,7 +490,7 @@ with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
             )
         else:
             return (
-                gr.update(visible=False), 
+                gr.update(visible=False),
                 gr.update(value=f" {message}", visible=True)
             )
 
@@ -430,5 +500,20 @@ with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
         outputs=[pdf_download, export_status],
         queue=False
     )
+    
+    # Feedback button click
+    btn_feedback.click(
+        fn=save_feedback,
+        inputs=[feedback_rating],
+        outputs=[feedback_status]
+    ).then(
+        lambda: (
+            gr.update(value=None, visible=False), # Clear rating selection and hide
+            gr.update(visible=False) # Hide feedback button
+        ),
+        inputs=None,
+        outputs=[feedback_rating, btn_feedback]
+    )
 
-demo.launch()
+if __name__ == "__main__":
+    demo.launch()

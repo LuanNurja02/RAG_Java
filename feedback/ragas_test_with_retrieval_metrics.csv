@@ -1,0 +1,329 @@
+question,ground_truth,contexts,answer,cosine_similarity_gt_ans,cosine_similarity_context_ans,cosine_similarity_context_relevance,cosine_similarity_context_recall,bleu,levenshtein_norm,bertscore_p,bertscore_r,bertscore_f1,ter
+Cosa è una lista e come si implementa,"Una lista è una struttura dati che memorizza una sequenza ordinata di elementi, permettendo l'accesso, l'inserimento e la rimozione. In Java, una lista può essere implementata tramite la classe LinkedList o ArrayList della libreria standard, oppure manualmente usando una classe Node che contiene un valore e un riferimento al prossimo nodo.","['8.  Liste \n \n \n \n \n \n \n \n \n \n \n8.1.  Forma di una lista \n \n \nUna tipica utilizzazione di classi con soli campi dati si ha nelle \ncosiddette liste, formate da elementi dello stesso tipo collegati a cat', 'CAPITOLO  8 \n180\n } \n void insFondo1(int s) \n { Elemento rr = new Elemento(); \n  rr.inf = s; rr.pun = null; \n  if (rpl == null) { rpl = rr; rul = rr; } \n  else \n  { rul.pun = rr; rul = rr; } \n } \n int', 'LISTE \n \n171\n } \n return s; \n} \n \n \n8.2.5.  Inserimento in una lista ordinata \n \nIl seguente metodo inserisce un nuovo elemento nella lista ordinata (in \nsenso crescente) puntata da rpl, in modo da ma']","Una lista in programmazione è un tipo di struttura dati che consente di memorizzare una sequenza di elementi, ognuno dei quali può essere identificato da un indice. Le liste possono essere implementate in diversi modi, ma la più comune è quella della lista dinamica.
+
+**Implementazione di una lista dinamica**
+
+Una lista dinamica è una struttura dati che consente di aggiungere o rimuovere elementi in qualsiasi momento. Ogni elemento della lista ha un riferimento al prossimo elemento, creando così una catena di elementi collegati.
+
+In Java, una lista dinamica può essere implementata utilizzando una classe `Elemento` che rappresenta ogni elemento della lista e una classe `Lista` che gestisce la struttura della lista stessa.
+
+**Esempio di codice**
+
+Di seguito è riportato un esempio di codice Java che implementa una lista dinamica:
+```java
+public class Elemento {
+    int inf; // informazione dell'elemento
+    Elemento pun; // riferimento al prossimo elemento
+
+    public Elemento(int info) {
+        this.inf = info;
+        this.pun = null;
+    }
+}
+
+public class Lista {
+    Elemento rpl; // riferimento al primo elemento della lista
+    Elemento rul; // riferimento all'ultimo elemento della lista
+
+    public void insFondo1(int s) {
+        Elemento rr = new Elemento(s);
+        if (rpl == null) {
+            rpl = rr;
+            rul = rr;
+        } else {
+            rul.pun = rr;
+            rul = rr;
+        }
+    }
+
+    public int estTesta1() {
+        int s = 0;
+        if (rpl != null) {
+            s = rpl.inf;
+            rpl = rpl.pun;
+            if (rpl == null) {
+                rul = null;
+            }
+        }
+        return s;
+    }
+
+    public void stampa() {
+        if (rpl == null) {
+            System.out.println(""Lista vuota"");
+        } else {
+            Elemento rr = rpl;
+            System.out.print(""Elementi: "");
+            while (rr != null) {
+                System.out.print(rr.inf + "" "");
+                rr = rr.pun;
+            }
+            System.out.println();
+        }
+    }
+}
+```
+**Metodi di inserimento e estrazione**
+
+I metodi `insFondo1` e `estTesta1` sono utilizzati per inserire e recuperare gli elementi della lista, rispettivamente. Il metodo `stampa` è utilizzato per visualizzare la lista.
+
+**Esempio di uso**
+
+Di seguito è riportato un esempio di uso della classe `Lista`:
+```java
+public class ProgListaN {
+    public static void main(String[] args) {
+        Lista ll = new Lista();
+        int n, m, i;
+        System.out.print(""Scrivi quanti numeri vuoi inserire: "");
+        m = Integer.parseInt(System.console().readLine());
+        System.out.print(""Scrivi "" + m + "" numeri: "");
+        for (i = 0; i < m; i++) {
+            n = Integer.parseInt(System.console().readLine());
+            ll.insFondo1(n);
+            System.out.println(""Inserito "" + n);
+        }
+        ll.stampa();
+    }
+}
+```
+Questo esempio crea una lista e richiede all'utente di inserire un numero di elementi. Poi, utilizza i metodi `insFondo1` e `stampa` per inserire gli elementi nella lista e visualizzare la lista stessa.
+
+**Documentazione ufficiale**
+
+La documentazione ufficiale della classe `Lista` è disponibile al seguente link:
+
+* [Java API: Lista](https://docs.oracle.com/javase/8/docs/api/java/util/List.html)
+
+La documentazione ufficiale fornisce informazioni dettagliate sulla classe `Lista`, compresi i metodi e le proprietà della classe.",0.8897693026745342,0.9149618805549818,0.8256597510349462,0.8665704848340201,0.023181660155430935,0.09304373348987383,0.5495439171791077,0.7383596897125244,0.6301109194755554,8.333333333333334
+Differenza tra classe interna ed esterna?,"Una classe esterna è una classe dichiarata a livello superiore, mentre una classe interna è definita all'interno di un'altra classe. Le classi interne possono accedere ai membri della classe esterna e sono spesso usate per raggruppare logicamente classi strettamente correlate.","['CAPITOLO  9 \n194\n  alfa.vai(); \n  // ... \n  // beta.fai();  errore \n  // beta vai();  errore \n  // il metodo statico main() non puo` \n  // utilizzare la variabile istanza beta \n } \n} \n \nIn una classe ', 'CAPITOLO  9 \n198\ndel costruttore ClasseInterna(5) (assegnamento a this.c del valore 5 e \nstampa di Classe.Esterna.this.a, ClasseEsterna.this.b e this.c (this è quello \ndell’oggetto riferito da ce.ci).', 'CAPITOLO  9 \n196\n  { i++;          // i di ClasseInterna \n   j++;          // j di ClasseEsterna \n   this.i++;       // i di ClasseInterna \n   ClasseEsterna.this.i++; // i di ClasseEsterna \n   // Clas']","La differenza principale tra una classe interna (nested class) e una classe esterna (outer class) in Java è la loro relazione di composizione.
+
+Una classe interna è definita all'interno di un'altra classe, chiamata classe esterna. La classe interna ha accesso ai membri della classe esterna e può utilizzare i metodi e le variabili della classe esterna come se fossero suoi propri. Inoltre, la classe interna può accedere anche ai metodi statici della classe esterna.
+
+La classe interna è un tipo di oggetto dipendente dallo specifico oggetto della classe esterna. Ciò significa che una istanza della classe interna è sempre associata a un'istanza della classe esterna e non può esistere separatamente da essa.
+
+Esempio di codice:
+```java
+public class ClasseEsterna {
+    private int i;
+
+    public ClasseInterna() {
+        this.i = 10;
+    }
+
+    public void fai() {
+        System.out.println(""Facciamo qualcosa!"");
+    }
+}
+
+class ClasseInterna {
+    private int j;
+
+    public ClasseInterna() {
+        this.j = 20;
+    }
+
+    public void fai() {
+        System.out.println(""Facciamo qualcosa di diverso!"");
+    }
+}
+```
+In questo esempio, `ClasseEsterna` è la classe esterna e `ClasseInterna` è la classe interna. La classe interna ha accesso ai membri della classe esterna e può utilizzare i metodi statici della classe esterna.
+
+La differenza tra una classe interna ed esterna è quindi la loro relazione di composizione e l'accesso ai membri della classe esterna.
+
+**Documentazione ufficiale:**
+
+*   [Java Tutorials - Nested Classes](https://docs.oracle.com/javase/tutorial/java/javaOO/nested.html)
+*   [Java Language and Virtual Machine Specification - 8.1.3 Nested Classes](https://docs.oracle.com/javase/specs/jls/se17/html/jls-8.html#jls-8.1.3)
+
+Nota: La documentazione ufficiale di Java è disponibile in italiano e inglese.",0.8877604915885913,0.9050635149954882,0.8454849491749021,0.8605385786217673,0.046702583631341305,0.13685932388222466,0.5615161657333374,0.7433459162712097,0.639762282371521,5.7
+cosa è e come si effettua l'override in Java?,"L'override in Java è la pratica di ridefinire un metodo ereditato da una superclasse in una sottoclasse, mantenendo la stessa firma. Si effettua dichiarando il metodo con la stessa firma nella sottoclasse e usando l'annotazione @Override.","['DERIVAZIONE \n \n213\nclass SottoClasse2 extends SuperClasse2 \n{ double d; \n public SottoClasse2(double b) \n { // chiamata implicita di SuperClasse2() \n  d = b; \n } \n public SottoClasse2(int a, double b)', 'CAPITOLO  10 \n214\n public void elabora(int i) \n { /* ... */ } \n} \n \nclass SottoClasse3 extends SuperClasse3 \n{ private int n = 1; private double m = 2; \n // ... \n public void elabora(int i, double d) ', 'DERIVAZIONE \n \n225\npublic  boolean  equals  (  Object  obj  ) \nrestituisce true o false, rispettivamente, se i riferimenti dell’oggetto \ncorrente e dell’oggetto parametro sono uguali o diversi \n \npubl']","L'override in Java è un meccanismo di programmazione che consente a una classe derivata (sottoclasse) di ridefinire il comportamento di un metodo già definito nella sua superclasse. Questo significa che la sottoclasse può fornire una implementazione diversa per lo stesso metodo, con lo stesso nome e gli stessi parametri.
+
+L'override è possibile solo se il metodo da ridefinire è stato dichiarato nella superclasse come `public` o `protected`. Se un metodo è privato (accessibile solo all'interno della classe), non può essere ridefinito dalla sottoclasse.
+
+Ecco un esempio di override in Java:
+```java
+// Superclasse
+public class SuperClasse {
+    public void metodo() {
+        System.out.println(""Metodo della superclasse"");
+    }
+}
+
+// Sottoclasse
+public class Sottoclasse extends SuperClasse {
+    @Override
+    public void metodo() {
+        System.out.println(""Metodo della sottoclasse"");
+    }
+}
+```
+Nell'esempio sopra, la classe `Sottoclasse` ridefinisce il metodo `metodo()` della superclasse `SuperClasse`, fornendo una implementazione diversa.
+
+Per effettuare l'override in Java, è necessario utilizzare l'annotazione `@Override` prima del nome del metodo da ridefinire. Questo indica al compilatore che si tratta di un override e non di una nuova definizione di metodo.
+
+Ecco un altro esempio di override con parametri diversi:
+```java
+// Superclasse
+public class SuperClasse {
+    public void metodo(int a, int b) {
+        System.out.println(""Metodo della superclasse con parametri "" + a + "" e "" + b);
+    }
+}
+
+// Sottoclasse
+public class Sottoclasse extends SuperClasse {
+    @Override
+    public void metodo(int a, double b) {
+        System.out.println(""Metodo della sottoclasse con parametri "" + a + "" e "" + b);
+    }
+}
+```
+Nell'esempio sopra, la classe `Sottoclasse` ridefinisce il metodo `metodo()` della superclasse `SuperClasse`, fornendo una implementazione diversa con parametri di tipo diverso.
+
+La documentazione ufficiale di Java fornisce ulteriori informazioni sull'override e sulla programmazione orientata agli oggetti in generale. Il link per la documentazione è: https://docs.oracle.com/javase/tutorial/java/IandI/override.html",0.9348834361339208,0.9110692565150984,0.8217134593616349,0.8763772932130868,0.011866418076879758,0.10596945858398887,0.5891390442848206,0.7613227367401123,0.6642542481422424,7.638888888888889
+A cosa serve la parola chiave 'final' in Java?,"La parola chiave final in Java serve a indicare che una variabile non può essere modificata dopo l'inizializzazione, un metodo non può essere sovrascritto nelle sottoclassi e una classe non può essere estesa.","['CAPITOLO  3 \n44 \nPertanto, la definizione di una variabile richiede l’indicazione \ndell’identificatore del tipo, la specifica dell’identificatore della variabile ed \neventualmente del suo valore inizi', 'ECCEZIONI \n \n241\n \n \n \n11.4.  Blocco finally \n \n \nL’istruzione try-catch prevede in realtà la possibilità di avere una parte \nfinally. La parte finally viene comunque eseguita: \n \n\uf0b7 \nsia nel caso in c', 'CAPITOLO  7 \n148\nsenso che una classe può essere sostituita con un’altra con diversa \nrappresentazione interna degli elementi, ma con metodi aventi le stesse \nintestazioni (interfacce dei metodi). Per']","La parola chiave `final` in Java è utilizzata per indicare che una variabile o un metodo non può essere modificato dopo la sua inizializzazione. Ciò significa che una volta che una variabile o un metodo sono stati definiti con il modificatore `final`, non possono più essere cambiati.
+
+Ecco alcuni esempi di come utilizzare la parola chiave `final` in Java:
+
+```java
+// Variabile finale
+final int NUMERO = 10;
+
+// Tentativo di modificare una variabile finale
+NUMERO = 20; // Errore, non è possibile modificare una variabile finale
+
+// Metodo finale
+public final void metodo() {
+    System.out.println(""Questo metodo non può essere sovrascritto"");
+}
+
+// Tentativo di sovrascrivere un metodo finale
+public void altroMetodo() {
+    this.metodo(); // Errore, non è possibile sovrascrivere un metodo finale
+}
+```
+
+La parola chiave `final` è utilizzata in diversi contesti:
+
+*   **Variabili finali**: una variabile definita con il modificatore `final` non può essere modificata dopo la sua inizializzazione.
+*   **Metodi finali**: un metodo definito con il modificatore `final` non può essere sovrascritto da una classe derivata.
+*   **Classi finali**: una classe definita con il modificatore `final` non può essere estesa da altre classi.
+
+La parola chiave `final` è utilizzata per garantire la sicurezza e la prevedibilità del codice, evitando che le variabili o i metodi siano modificati in modo imprevisto.
+
+**Esempio di utilizzo della parola chiave 'final'**
+
+```java
+public class Persona {
+    private final String nome;
+    private final int eta;
+
+    public Persona(String nome, int eta) {
+        this.nome = nome;
+        this.eta = eta;
+    }
+
+    public void stampaInformazioni() {
+        System.out.println(""Nome: "" + nome);
+        System.out.println(""Età: "" + eta);
+    }
+}
+
+public class Studente extends Persona {
+    private final String materia;
+
+    public Studente(String nome, int eta, String materia) {
+        super(nome, eta);
+        this.materia = materia;
+    }
+
+    @Override
+    public void stampaInformazioni() {
+        super.stampaInformazioni();
+        System.out.println(""Materia: "" + materia);
+    }
+}
+```
+
+In questo esempio, la classe `Persona` ha due variabili finali `nome` e `eta`, che non possono essere modificate dopo la loro inizializzazione. La classe `Studente` estende la classe `Persona` e aggiunge una nuova variabile finale `materia`. Il metodo `stampaInformazioni()` è definito come finale nella classe `Persona`, quindi non può essere sovrascritto dalla classe `Studente`.
+
+**Documentazione ufficiale**
+
+La documentazione ufficiale di Java fornisce ulteriori informazioni sulla parola chiave `final` e sul suo utilizzo. Ecco il link alla sezione relativa:
+
+*   [Java Language Specification - The final keyword](https://docs.oracle.com/javase/specs/jls/se17/html/jls-8.html#jls-8.3.1.2)
+
+In questa sezione, la documentazione ufficiale di Java spiega il significato e l'utilizzo della parola chiave `final` in dettaglio.
+
+**Risposta alla domanda**
+
+La risposta alla domanda ""A cosa serve la parola chiave 'final' in Java?"" è che la parola chiave `final` è utilizzata per indicare che una variabile o un metodo non può essere modificato dopo la sua inizializzazione. Ciò significa che una volta che una variabile o un metodo sono stati definiti con il modificatore `final`, non possono più essere cambiati.
+
+La parola chiave `final` è utilizzata per garantire la sicurezza e la prevedibilità del codice, evitando che le variabili o i metodi siano modificati in modo imprevisto.",0.9343798871151228,0.8637128604689436,0.8099235085927843,0.8585311414860948,0.022353937268239355,0.058790116444191964,0.5607001185417175,0.7862240076065063,0.6545816659927368,14.151515151515152
+cosa sono i file e come si leggono in java?,"Un file è una risorsa di memorizzazione persistente su disco. In Java, i file si leggono usando classi come FileReader, BufferedReader o Files.readAllLines(). Ad esempio, si può usare BufferedReader reader = new BufferedReader(new FileReader(""nomefile.txt"")); per leggere il contenuto riga per riga.","['CLASSI \n \n159\ndi un package, le classi vengono individuate con un nome completo, \ncostituito dal nome della classe preceduto, con la notazione a punto, dal \nnome del package di cui fa parte (nome-pack', 'CAPITOLO  12 \n274\n \nconsentono di ottenere un array di riferimenti di oggetti String o di oggetti \nFile, rispettivamente, contenuti nella cartella a cui i metodi si applicano \n(null se nella cartella ', '4.  Istruzioni e programma \n \n \n \n \n \n \n \n \n \n \n4.1.  Struttura di un semplice programma \n \n \nCome visto nel Capitolo 1, un programma Java è costituito da una \nclasse principale e da eventuali classi ']","I file in Java sono oggetti che rappresentano dei contenitori di dati. Possono essere utilizzati per memorizzare e recuperare informazioni da un programma.
+
+Per leggere un file in Java, puoi utilizzare la classe `FileReader`. Ecco un esempio di come fare:
+
+```java
+import java.io.FileReader;
+import java.io.IOException;
+
+public class Main {
+    public static void main(String[] args) throws IOException {
+        // Creare un oggetto File per rappresentare il file da leggere
+        File file = new File(""nomefile.txt"");
+
+        // Creare un oggetto FileReader per leggere il file
+        FileReader reader = new FileReader(file);
+
+        // Leggere il contenuto del file
+        int carattere;
+        while ((carattere = reader.read()) != -1) {
+            System.out.print((char) carattere);
+        }
+
+        // Chiudere il lettore
+        reader.close();
+    }
+}
+```
+
+In questo esempio, si crea un oggetto `File` per rappresentare il file da leggere e poi si crea un oggetto `FileReader` per leggerlo. Il contenuto del file viene letto carattere per carattere utilizzando la variabile `carattere`, che contiene il codice ASCII del carattere letto. Infine, si chiude il lettore.
+
+Nota che questo è solo un esempio di base e non copre tutte le possibili eccezioni che possono verificarsi durante la lettura del file. Inoltre, se il file non esiste o non può essere aperto per motivi di permessi, verrà lanciata un'eccezione.
+
+Per gestire queste eccezioni, puoi utilizzare dei blocchi `try-catch` come questo:
+
+```java
+import java.io.FileReader;
+import java.io.IOException;
+
+public class Main {
+    public static void main(String[] args) {
+        try {
+            // Creare un oggetto File per rappresentare il file da leggere
+            File file = new File(""nomefile.txt"");
+
+            // Creare un oggetto FileReader per leggere il file
+            FileReader reader = new FileReader(file);
+
+            // Leggere il contenuto del file
+            int carattere;
+            while ((carattere = reader.read()) != -1) {
+                System.out.print((char) carattere);
+            }
+
+            // Chiudere il lettore
+            reader.close();
+        } catch (IOException e) {
+            System.err.println(""Errore di lettura del file: "" + e.getMessage());
+        }
+    }
+}
+```
+
+In questo esempio, si utilizza un blocco `try-catch` per catturare l'eccezione `IOException` che può essere lanciata durante la lettura del file. Se l'eccezione viene lanciata, il messaggio di errore viene stampato sulla console.
+
+Spero che questo ti sia stato utile!",0.9094530705994536,0.8868510227562273,0.8363758479960562,0.8639251424847051,0.024574382143030146,0.09657320872274144,0.6333341598510742,0.7275888919830322,0.6771975755691528,7.97560975609756
