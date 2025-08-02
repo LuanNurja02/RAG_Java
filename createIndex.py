@@ -36,7 +36,7 @@ llm = Ollama(
 )
 
 embed_model = HuggingFaceEmbedding(
-    model_name="intfloat/e5-small-v2"
+    model_name="intfloat/e5-base-v2"
 )
 
 # Pipeline: split, estrai titoli e domande
@@ -46,27 +46,11 @@ text_splitter = SentenceSplitter(
     chunk_overlap=200
     
     )
-title_extractor = TitleExtractor(
-    
-    llm=llm,
-    nodes=3
-    
-    )
-qa_extractor = QuestionsAnsweredExtractor(
-    
-    llm=llm,
-    questions=2, 
-
-    
-    )
 
 pipeline = IngestionPipeline(
     transformations=[
         
-        text_splitter, 
-        title_extractor, 
-        qa_extractor
-        
+        text_splitter,
         ]
 )
 
@@ -84,14 +68,14 @@ os.environ["PINECONE_API_KEY"] = "pcsk_6VBs3G_8DQhyP34krGmTda5APDdDBnA849MLsswfm
 api_key = os.environ["PINECONE_API_KEY"]
 
 pc = Pinecone(api_key=api_key)
-index_name = "meta-lib"
+index_name = "documenti"
 
 # Crea indice se non esiste
 if index_name not in list(pc.list_indexes()):
     print(f"Indice '{index_name}' non trovato, lo creo...")
     pc.create_index(
         name=index_name,
-        dimension=384,
+        dimension=768,
         metric="cosine",
         spec=ServerlessSpec(cloud="aws", region="us-east-1")
     )

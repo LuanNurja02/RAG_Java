@@ -10,21 +10,22 @@ from pinecone import Pinecone, ServerlessSpec
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 from llama_index.core import StorageContext, VectorStoreIndex
 from tree_sitter import Parser
-
+from dotenv import load_dotenv
+load_dotenv(dotenv_path='pinecone_key.env')
 
 JAVA_CODEBASE_PATH = "DATA/codebase"
 PINECONE_CLOUD = "aws"
 PINECONE_REGION = "us-east-1"
-PINECONE_INDEX_NAME = "java-codebase" 
+PINECONE_INDEX_NAME = "codebase" 
 
 
 # Parametri del modello di embedding
-EMBEDDING_MODEL_NAME = "intfloat/e5-small-v2"
-EMBEDDING_DIMENSION = 384 
+EMBEDDING_MODEL_NAME = "intfloat/e5-base-v2"
+EMBEDDING_DIMENSION = 768 
 
 # Parametri di CodeSplitter
-CODE_CHUNK_LINES = 50
-CODE_CHUNK_OVERLAP = 10
+CODE_CHUNK_LINES = 100
+CODE_CHUNK_OVERLAP = 20
 
 
 print(f"Caricamento dei documenti Java da: {JAVA_CODEBASE_PATH}...")
@@ -47,6 +48,18 @@ embed_model = HuggingFaceEmbedding(
 
 print("Configurazione della pipeline di ingestion...")
 
+llm = Ollama(
+    model="llama3.1:8b",
+    temperature=0.1,
+    max_tokens=14000,
+    request_timeout=600,
+    context_window=14000,
+    streaming=False,
+    min_length=100,
+    top_p=0.9,
+    repeat_penalty=1.2
+)
+
 # CodeSplitter per dividere il codice Java (basato su tree-sitter per java)
 code_splitter = CodeSplitter(
     
@@ -55,13 +68,29 @@ code_splitter = CodeSplitter(
     chunk_lines_overlap=CODE_CHUNK_OVERLAP
     
 )
+title_extractor = TitleExtractor(
+    
+    llm=llm,
+    nodes=3
+    
+    )
+qa_extractor = QuestionsAnsweredExtractor(
+    
+    llm=llm,
+    questions=2, 
+
+    
+    )
+
 
 
 # Definizione della pipeline 
 pipeline = IngestionPipeline(
     transformations=
     [
-        code_splitter
+        code_splitter,
+        title_extractor,
+        qa_extractor
         
     ]
 )
