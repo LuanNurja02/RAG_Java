@@ -377,11 +377,18 @@ with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
                 interactive=True
             )
             codice = gr.Textbox(
-                label="Codice Java (Opzionale per Coding Assistant)",
+                label="Codice",
                 lines=7,
-                placeholder="Incolla qui il codice Java da analizzare, debuggare o su cui vuoi basare una generazione. (Ignorato in modalità Tutor)",
+                placeholder=""" public class HelloWorld {
+    public static void main(String[] args) {
+        System.out.println("Hello, World!");
+    }
+}
+""",
                 interactive=True,
-                visible=False
+                visible=False,
+                autoscroll=True,
+                autofocus=True,
             )
 
         with gr.Column(scale=3):
@@ -389,6 +396,7 @@ with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
                 label="Conversazione",
                 elem_id="chatbot",
                 height=500
+                
             )
 
             with gr.Row():
@@ -509,7 +517,7 @@ with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
         lambda: (
             gr.update(value=None, visible=False), 
             gr.update(visible=False) 
-        ),
+        ), 
         inputs=None,
         outputs=[feedback_rating, btn_feedback]
     )
