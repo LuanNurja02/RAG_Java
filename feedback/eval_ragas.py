@@ -22,7 +22,7 @@ def cosine_similarity(a, b):
     b = np.array(b)
     return np.dot(a, b) / (norm(a) * norm(b) + 1e-8)
 
-# --- QUERY DI ESEMPIO E RISPOSTE IDEALI (personalizza qui) ---
+#dataset per domande e risposte usate per valutare il sistema rag---
 examples = [
     {
         "question": "Cosa è una lista e come si implementa",
@@ -46,7 +46,7 @@ examples = [
     },
 ]
 
-# --- ESECUZIONE DEL SISTEMA RAG E RACCOLTA DATI ---
+
 index = vector_indices["Tutor"]
 query_engine = configure_query_engine(
     index_instance=index,
@@ -86,7 +86,6 @@ for ex in examples:
         emb_contexts = embed_model.get_text_embedding(concatenated_contexts)
         cos_sim_context_ans = cosine_similarity(emb_contexts, emb_ans)
 
-    # NUOVE METRICHE PER IL RECUPERO
     cos_sim_context_relevance = np.nan # Rilevanza del contesto alla domanda
     cos_sim_context_recall = np.nan # Recall del contesto rispetto alla ground truth
 
@@ -98,12 +97,10 @@ for ex in examples:
         cos_sim_context_relevance = np.mean(relevance_scores) if relevance_scores else np.nan
 
         # Context Recall: similarità tra i contesti CONCATENATI e la ground truth
-        # Assumiamo che la ground_truth dovrebbe essere "coperta" dai contesti recuperati
-        # Questo è un proxy, non una vera recall binaria come in RAGAs con annotazioni
-        if concatenated_contexts: # Assicurati che i contesti non siano vuoti
+        if concatenated_contexts: 
             cos_sim_context_recall = cosine_similarity(emb_contexts, emb_gt)
 
-    # Altre metriche di generazione (già presenti)
+
     ref = [nltk.word_tokenize(ground_truth.lower())]
     hyp = nltk.word_tokenize(answer.lower())
     bleu = sentence_bleu(ref, hyp, smoothing_function=SmoothingFunction().method1)
@@ -135,13 +132,13 @@ for ex in examples:
         "ter": ter,
     })
 
-# --- ESPORTA CSV ---
+#saltavaggio
 df = pd.DataFrame(rows)
 df.to_csv("rag_test.csv", index=False)
 print("Creato ragas_test_with_retrieval_metrics.csv con i risultati delle query e delle metriche locali.")
 
 # Stampa media delle metriche
-print("\n=== METRICHE LOCALI (media) ===")
+print("\n=== METRICHE ===")
 print("Cosine similarity (Ground Truth vs Answer):", df["cosine_similarity_gt_ans"].mean())
 print("Cosine similarity (Context vs Answer):", df["cosine_similarity_context_ans"].mean())
 print("Cosine similarity (Context Relevance - Question vs Contexts):", df["cosine_similarity_context_relevance"].mean())
