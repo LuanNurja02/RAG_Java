@@ -33,9 +33,9 @@ import datetime
 
 load_dotenv(dotenv_path='pinecone_key.env')
 
-TUTOR_INDEX_NAME = "meta-lib"
-ASSISTANT_INDEX = "java-codebase"
-EMBEDDING_MODEL_NAME = "intfloat/e5-small-v2"
+TUTOR_INDEX_NAME = "documenti"
+ASSISTANT_INDEX = "codebase"
+EMBEDDING_MODEL_NAME = "intfloat/e5-base-v2"
 # Re-ranker
 RERANK_MODEL_NAME = "BAAI/bge-reranker-base"
 RERANK_TOP_N = 3  # nodi da usare dopo il re-ranking
