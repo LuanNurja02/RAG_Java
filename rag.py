@@ -15,16 +15,13 @@ from llama_index.core.response_synthesizers import ResponseMode
 from gradio import themes
 from llama_index.postprocessor.flag_embedding_reranker import FlagEmbeddingReranker
 from util import (
-    OLLAMA_MODEL,
-    OLLAMA_TEMPERATURE,
-    OLLAMA_MAX_TOKENS,
-    OLLAMA_CONTEXT_WINDOW,
-    OLLAMA_REQUEST_TIMEOUT,
     TUTOR_PROMPT,
     SPIEGAZIONE_CODICE_PROMPT,
     DEBUG_CODICE_PROMPT,
     CREA_CODICE_PROMPT,
-    export_to_pdf
+    export_to_pdf,
+    tutor,
+    coding
 )
 from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.chat_engine import ContextChatEngine
@@ -39,6 +36,8 @@ EMBEDDING_MODEL_NAME = "intfloat/e5-base-v2"
 # Re-ranker
 RERANK_MODEL_NAME = "BAAI/bge-reranker-base"
 RERANK_TOP_N = 3  # nodi da usare dopo il re-ranking
+
+
 
 # Funzione per Configurare il Query Engine
 def configure_query_engine(index_instance, llm_instance, prompt_template_instance, reranker_instance, response_mode=ResponseMode.COMPACT, memory=None):
@@ -82,8 +81,8 @@ RESPONSE_MODE_MAP = {
     "Sintetica": ResponseMode.TREE_SUMMARIZE
 }
 
-llm_tutor = None
-llm_coding = None
+llm_tutor = tutor
+llm_coding = coding
 embed_model = None
 reranker = None
 vector_indices = {}
@@ -107,31 +106,7 @@ try:
         top_n=RERANK_TOP_N
     )
 
-    # LLM per Tutor
-    llm_tutor = Ollama(
-        model=OLLAMA_MODEL, 
-        temperature=OLLAMA_TEMPERATURE,
-        max_tokens=OLLAMA_MAX_TOKENS,
-        request_timeout=OLLAMA_REQUEST_TIMEOUT,
-        context_window=OLLAMA_CONTEXT_WINDOW,
-        streaming=True,
-        min_length=100,
-        top_p=0.9,
-        repeat_penalty=1.2
-    )
 
-    # LLM per Coding Assistant
-    llm_coding = Ollama(
-        model="codellama:7b",  
-        temperature=0.1,
-        max_tokens=OLLAMA_MAX_TOKENS,
-        request_timeout=OLLAMA_REQUEST_TIMEOUT,
-        context_window=OLLAMA_CONTEXT_WINDOW,
-        streaming=False,  
-        min_length=100,
-        top_p=0.9,
-        repeat_penalty=1.2
-    )
 
     pinecone_index_tutor = pc.Index(TUTOR_INDEX_NAME)
     vector_store_tutor = PineconeVectorStore(pinecone_index=pinecone_index_tutor)

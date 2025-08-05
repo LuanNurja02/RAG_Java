@@ -47,10 +47,21 @@ text_splitter = SentenceSplitter(
     
     )
 
+title_extractor = TitleExtractor(
+    llm=llm,
+    nodes=2
+    
+)
+qa = QuestionsAnsweredExtractor(
+    llm=llm,
+    num_questions=2
+)
 pipeline = IngestionPipeline(
     transformations=[
         
         text_splitter,
+        title_extractor,
+        qa
         ]
 )
 

@@ -8,13 +8,46 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Preformatted
 from reportlab.lib.colors import HexColor, black
 from reportlab.lib.enums import TA_LEFT, TA_JUSTIFY
+from llama_index.llms.ollama import Ollama
 
 # Parametri del modello LLM (Ollama)
 OLLAMA_MODEL = "llama3.1:8b"
+OLLAMA_CODING = "codellama:7b"
 OLLAMA_TEMPERATURE = 0.1
 OLLAMA_MAX_TOKENS = 14000
 OLLAMA_CONTEXT_WINDOW = 14000
 OLLAMA_REQUEST_TIMEOUT = 600
+
+
+    # LLM per Tutor
+tutor = Ollama(
+        model=OLLAMA_MODEL,
+        temperature=OLLAMA_TEMPERATURE,
+        top_p=0.9,
+        top_k=40,
+        timeout=OLLAMA_REQUEST_TIMEOUT,
+        tfs_z=0.5,
+        repeat_penalty=1.2,
+        num_predict=OLLAMA_MAX_TOKENS,
+        request_timeout=OLLAMA_REQUEST_TIMEOUT,
+        context_window=OLLAMA_CONTEXT_WINDOW
+    )
+
+
+        # LLM per Coding Assistant
+coding = Ollama(
+        model=OLLAMA_CODING,
+        temperature=0.1,
+        top_p=0.9,
+        top_k=40,
+        timeout=OLLAMA_REQUEST_TIMEOUT,
+        tfs_z=1.0,
+        repeat_penalty=1.2,
+        num_predict=OLLAMA_MAX_TOKENS,
+        request_timeout=OLLAMA_REQUEST_TIMEOUT,
+        context_window=OLLAMA_CONTEXT_WINDOW
+    )
+
 
 # --- Prompt per le Diverse Modalità ---
 
