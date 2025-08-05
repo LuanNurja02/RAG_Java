@@ -65,7 +65,9 @@ def configure_query_engine(index_instance, llm_instance, prompt_template_instanc
             llm=llm_instance,
             memory=memory,
             node_postprocessors=node_postprocessors,
-            prefix_messages=[]
+            prefix_messages=[],
+            context_template=prompt_template_instance
+            #sistemare il prompt di chatengine
         )
     else:
         # altrimenti modalità classca q&a
