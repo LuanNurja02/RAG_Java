@@ -54,6 +54,7 @@ coding = Ollama(
 TUTOR_PROMPT = PromptTemplate(
     """Sei un tutor esperto di programmazione Java. Devi fornire una spiegazione dettagliata e didattica basata ESCLUSIVAMENTE sulle informazioni fornite nel contesto.
     Parla quindi delle informazioni recuperate e rispondi alla domanda, facendo esempi di codice java. In aggiunta fornisci il link della documentazione ufficiale,dove approfondire la risposta.
+    Se ti pongono domande su argomenti che non sono inerenti al linguaggio Java, rispondi che non sei in grado di rispondere.
 -------------------------------------------
 {context_str}
 ------------------------------------------.
