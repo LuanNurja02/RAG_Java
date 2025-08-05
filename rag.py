@@ -163,7 +163,7 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
 
     try:
         if mode == "Tutor":
-            selected_response_mode = RESPONSE_MODE_MAP.get(response_mode_tutor, ResponseMode.COMPACT) if chat_mode == "Classica" else ResponseMode.COMPACT
+            selected_response_mode = RESPONSE_MODE_MAP.get(response_mode_tutor, ResponseMode.COMPACT)
 
             if chat_mode == "Chat":
                 current_query_engine = configure_query_engine(
@@ -171,7 +171,6 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                     llm_instance=llm_tutor,  
                     prompt_template_instance=TUTOR_PROMPT,
                     reranker_instance=reranker,
-                    response_mode=ResponseMode.COMPACT,
                     memory=chat_memory_tutor
                 )
                 print(f"💡 Executing in TUTOR mode (Chat) with query: {final_query[:50]}...")
