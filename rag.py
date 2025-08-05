@@ -21,7 +21,8 @@ from util import (
     CREA_CODICE_PROMPT,
     export_to_pdf,
     tutor,
-    coding
+    coding,
+    PROMPT_CHAT
 )
 from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.chat_engine import ContextChatEngine
@@ -66,7 +67,7 @@ def configure_query_engine(index_instance, llm_instance, prompt_template_instanc
             memory=memory,
             node_postprocessors=node_postprocessors,
             prefix_messages=[],
-            context_template=prompt_template_instance
+            context_template=prompt_template_instance   #aggiungere il promt
             #sistemare il prompt di chatengine
         )
     else:
@@ -171,7 +172,7 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                 current_query_engine = configure_query_engine(
                     index_instance=vector_indices["Tutor"],
                     llm_instance=llm_tutor,  
-                    prompt_template_instance=TUTOR_PROMPT,
+                    prompt_template_instance=PROMPT_CHAT,
                     reranker_instance=reranker,
                     memory=chat_memory_tutor
                 )
