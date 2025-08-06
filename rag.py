@@ -54,7 +54,7 @@ def configure_query_engine(index_instance, llm_instance, prompt_template_instanc
 
     response_synthesizer = get_response_synthesizer(
         llm=llm_instance,
-        streaming=True,
+        streaming=True, 
         response_mode=response_mode,
         text_qa_template=prompt_template_instance
     )
@@ -67,7 +67,7 @@ def configure_query_engine(index_instance, llm_instance, prompt_template_instanc
             memory=memory,
             node_postprocessors=node_postprocessors,
             prefix_messages=[],
-            context_template=prompt_template_instance   #aggiungere il promt
+            context_template=prompt_template_instance 
             #sistemare il prompt di chatengine
         )
     else:
