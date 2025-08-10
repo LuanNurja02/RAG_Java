@@ -26,7 +26,6 @@ tutor = Ollama(
         top_p=0.9,
         top_k=40,
         timeout=OLLAMA_REQUEST_TIMEOUT,
-        tfs_z=0.5,
         repeat_penalty=1.2,
         num_predict=OLLAMA_MAX_TOKENS,
         request_timeout=OLLAMA_REQUEST_TIMEOUT,
@@ -37,11 +36,10 @@ tutor = Ollama(
         # LLM per Coding Assistant
 coding = Ollama(
         model=OLLAMA_CODING,
-        temperature=0.1,
+        temperature=OLLAMA_TEMPERATURE,
         top_p=0.9,
         top_k=40,
         timeout=OLLAMA_REQUEST_TIMEOUT,
-        tfs_z=1.0,
         repeat_penalty=1.2,
         num_predict=OLLAMA_MAX_TOKENS,
         request_timeout=OLLAMA_REQUEST_TIMEOUT,
@@ -128,7 +126,7 @@ ANALISI E SUGGERIMENTI PER IL DEBUG:"""
 )
 
 CREA_CODICE_PROMPT = PromptTemplate(
-    """Sei un programmatore esperto di Java con 20 anni di esperienza. Basandoti sul contesto fornito ma sopratutto sulla richiesta nella query, genera codice Java funzionale.
+    """Sei un programmatore esperto di Java con 20 anni di esperienza. Basandoti sul contesto fornito ma sopratutto sulla richiesta nella query.
     Fornisci solo il codice necessario e, se utile, un breve commento sulla logica.
     Se il contesto non contiene informazioni sufficienti, rispondi usando la tua conoscenza.
     genera solo codice funzionale, non obsoleto e fai attenzione a non scrivere codice che non sia richiesto dalla query.

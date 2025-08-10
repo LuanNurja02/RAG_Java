@@ -454,12 +454,13 @@ with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
         queue=True
     ).then(
         lambda: (
-            "", # Clear input
+            " ",
+            " ",
             gr.update(visible=True), 
             gr.update(visible=True) 
         ),
         inputs=None,
-        outputs=[domanda_input, feedback_rating, btn_feedback]
+        outputs=[domanda_input,codice, feedback_rating, btn_feedback]
     )
 
     btn_clear.click(
