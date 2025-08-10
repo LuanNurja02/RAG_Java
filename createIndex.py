@@ -4,11 +4,13 @@ from llama_index.core import SimpleDirectoryReader, StorageContext, VectorStoreI
 from llama_index.readers.file import PyMuPDFReader
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.core.extractors import TitleExtractor, QuestionsAnsweredExtractor
+from llama_index.core.extractors import TitleExtractor, QuestionsAnsweredExtractor,KeywordExtractor
+
 from llama_index.core.ingestion import IngestionPipeline
 from llama_index.llms.ollama import Ollama
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 from pinecone import Pinecone, ServerlessSpec
+
 
 
 # Carica documenti PDF
@@ -27,7 +29,7 @@ llm = Ollama(
     model="llama3.1:8b",
     temperature=0.1,
     max_tokens=14000,
-    request_timeout=600,
+    request_timeout=800,
     context_window=14000,
     streaming=False,
     min_length=100,
@@ -52,16 +54,23 @@ title_extractor = TitleExtractor(
     nodes=2
     
 )
-qa = QuestionsAnsweredExtractor(
+key = KeywordExtractor(
+    llm=llm,
+    num_keywords=5
+)
+
+questions_extractor = QuestionsAnsweredExtractor(
     llm=llm,
     num_questions=2
 )
+
 pipeline = IngestionPipeline(
     transformations=[
         
         text_splitter,
         title_extractor,
-        qa
+        key,
+        questions_extractor
         ]
 )
 
@@ -79,7 +88,7 @@ os.environ["PINECONE_API_KEY"] = "pcsk_6VBs3G_8DQhyP34krGmTda5APDdDBnA849MLsswfm
 api_key = os.environ["PINECONE_API_KEY"]
 
 pc = Pinecone(api_key=api_key)
-index_name = "documenti"
+index_name = "documenti-extra"
 
 # Crea indice se non esiste
 if index_name not in list(pc.list_indexes()):
