@@ -22,5 +22,29 @@
                 "score": -3.6840274333953857
             }
         ]
+    },
+    {
+        "timestamp": "2025-08-10T02:07:59.607688",
+        "query": "cosa sono le funzioni ricorsive",
+        "response": "Le funzioni ricorsive sono un concetto fondamentale nella programmazione che consente di risolvere problemi complessi dividendoli in sottoproblemi più semplici, che possono essere risolti utilizzando la stessa funzione.\n\nUna funzione ricorsiva è una funzione che si chiama se stessa, in modo da creare un albero di chiamate che termina quando il problema è stato risolto. La funzione ricorsiva si basa sul principio della divisione e conquista, dove il problema complesso viene diviso in sottoproblemi più semplici, che possono essere risolti utilizzando la stessa funzione.\n\nEcco un esempio di come funziona una funzione ricorsiva:\n```java\npublic static int fatt(int n) {\n    if (n == 0) return 1;\n    else return n * fatt(n-1);\n}\n```\nIn questo esempio, la funzione `fatt` si chiama se stessa con l'argomento `n-1`, fino a quando `n` non è più uguale a 0. Quando `n` è 0, la funzione ritorna 1.\n\nLa funzione ricorsiva ha alcune caratteristiche importanti:\n\n* La funzione si chiama se stessa.\n* La funzione utilizza un argomento che viene modificato in ogni chiamata.\n* La funzione termina quando il problema è stato risolto (ad esempio, quando `n` è 0).\n\nLe funzioni ricorsive sono utili per risolvere problemi complessi come:\n\n* Calcolo del fattoriale di un numero intero.\n* Ordinamento di una lista di elementi.\n* Ricerca di un elemento in una struttura dati.\n\nTuttavia, le funzioni ricorsive possono anche avere alcuni svantaggi, come ad esempio:\n\n* La memoria utilizzata può aumentare rapidamente se la funzione si chiama troppo spesso.\n* La funzione può essere difficile da comprendere e mantenere.\n\nIn generale, le funzioni ricorsive sono un concetto importante nella programmazione che può essere utilizzato per risolvere problemi complessi in modo efficiente e elegante.",
+        "mode": "Tutor",
+        "prompt_mode": null,
+        "response_mode_tutor": "Dettagliata",
+        "chat_mode": "Chat",
+        "feedback_rating": 5,
+        "source_nodes": [
+            {
+                "content_preview": "FUNZIONI \n \n87\n  Console.nuovaLinea(); \n } \n} \n \n \n \n5.5.  Ricorsione \n \n \nIn Java (come nella maggior parte dei linguaggi di programmazione) \nuna funzione può invocare non solo un’altra funzione, ma anche se stessa: \nin questo caso la funzione è ricorsiva (si ha una nuova istanza della \nmedesima funzione mentre l’istanza attuale non è ancora conclusa). Questa \ncaratteristica del linguaggio rende agevole la programmazione in tutti quei \ncasi in cui risulta naturale formulare il problema da risol...\n(Contenuto troncato)",
+                "score": 2.5773589611053467
+            },
+            {
+                "content_preview": "CAPITOLO  5 \n90 \nNe discende la seguente funzione Java:  \n \nstatic double pot(double x, int n) \n{ double t; \n if (n == 0) return 1; \n if (n == 1) return x; \n if (n%2 == 0) t = 1; else t = x; \n return t*pot(x*x, n/2); \n} \n \nDagli esempi visti finora, si deduce che per scrivere una funzione \nricorsiva bisogna individuare due componenti fondamentali dell’algoritmo: \ni) uno o più casi base, per i quali termina la successione delle chiamate \nricorsive, e ii) uno o più passi ricorsivi. La ricorsione è...\n(Contenuto troncato)",
+                "score": -0.6617099046707153
+            },
+            {
+                "content_preview": "Capitolo 7\nJava e i database\nDI NICOLA VENDITTI\nChe cosa sono i database?\nOgni giorno nel mondo vengono scambiati inimmaginabili volumi di dati e quasi in\nogni parte del mondo le informazioni vengono recuperate, elaborate, trasformate, accre-\nsciute, aggiornate e infine re-immagazzinate. Questa enormità, che è una novità della no-\nstra epoca, rappresenta, per la sua portata, un raggiungimento per il genere umano.\nI databases sono il centro vitale di questo movimento: ci permettono non solamente ...\n(Contenuto troncato)",
+                "score": -5.423818111419678
+            }
+        ]
     }
 ]
