@@ -259,7 +259,7 @@ def export_to_pdf(history):
                     story.append(Spacer(1, 20))
 
         # Genera il PDF
-        doc.build(story, allowSplitting=1)
+        doc.build(story)
 
         return temp_filename, "PDF esportato con successo!"
 
