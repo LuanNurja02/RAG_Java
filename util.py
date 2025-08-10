@@ -257,12 +257,12 @@ def export_to_pdf(history):
                 # Separatore tra conversazioni
                 if i < len(history):
                     story.append(Spacer(1, 20))
-        
+
         # Genera il PDF
-        doc.build(story)
-        
+        doc.build(story, allowSplitting=1)
+
         return temp_filename, "PDF esportato con successo!"
-        
+
     except Exception as e:
         return None, f"Errore durante l'esportazione: {str(e)}"
 
