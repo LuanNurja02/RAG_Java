@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from gradio.components import markdown
 from pinecone import Pinecone
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
@@ -31,12 +32,13 @@ import datetime
 
 load_dotenv(dotenv_path='pinecone_key.env')
 
-TUTOR_INDEX_NAME = "documenti"
+TUTOR_INDEX_NAME = "documenti-extra"
 ASSISTANT_INDEX = "codebase"
 EMBEDDING_MODEL_NAME = "intfloat/e5-base-v2"
 # Re-ranker
 RERANK_MODEL_NAME = "BAAI/bge-reranker-base"
 RERANK_TOP_N = 3  # nodi da usare dopo il re-ranking
+
 
 
 
@@ -108,7 +110,7 @@ try:
         model=RERANK_MODEL_NAME,
         top_n=RERANK_TOP_N
     )
-
+    
 
 
     pinecone_index_tutor = pc.Index(TUTOR_INDEX_NAME)
@@ -225,13 +227,31 @@ def process_message(message: str, history: list, mode: str, prompt_mode: str, co
                 streaming_response = current_query_engine.query(full_query)
 
         response_index = -1
+        
+        chunk_buffer = ""
+        buffer_size = 2  
+        update_counter = 0
 
         if hasattr(streaming_response, 'response_gen'):
             for text_chunk in streaming_response.response_gen:
-                current_response_text += text_chunk
+                chunk_buffer += text_chunk
+                
+                # Aggiorna solo quando il buffer raggiunge la dimensione target
+                # o ogni N iterazioni per evitare blocchi lunghi
+                update_counter += 1
+                if len(chunk_buffer) >= buffer_size or update_counter % 3 == 0:
+                    current_response_text += chunk_buffer
+                    history[response_index][1] = current_response_text
+                    chunk_buffer = ""  # Reset buffer
+                    yield history
+            
+            # Assicurati di inviare l'ultimo buffer
+            if chunk_buffer:
+                current_response_text += chunk_buffer
                 history[response_index][1] = current_response_text
                 yield history
         else:
+            # Fallback per risposte non-streaming
             current_response_text = str(getattr(streaming_response, 'response', streaming_response))
             history[response_index][1] = current_response_text
             yield history
@@ -365,14 +385,15 @@ with gr.Blocks(theme=themes.Ocean(), title="Java Assistant") as demo:
                 interactive=True,
                 visible=False,
                 autoscroll=True,
-                autofocus=True,
+                autofocus=True
             )
 
         with gr.Column(scale=3):
             chatbot = gr.Chatbot(
                 label="Conversazione",
                 elem_id="chatbot",
-                height=500
+                height=500,
+                render=True
                 
             )
 
