@@ -14,8 +14,8 @@ from llama_index.llms.ollama import Ollama
 OLLAMA_MODEL = "llama3.1:8b"
 OLLAMA_CODING = "codellama:7b"
 OLLAMA_TEMPERATURE = 0.1
-OLLAMA_MAX_TOKENS = 14000
-OLLAMA_CONTEXT_WINDOW = 14000
+OLLAMA_MAX_TOKENS = 3000
+OLLAMA_CONTEXT_WINDOW = 5000
 OLLAMA_REQUEST_TIMEOUT = 600
 
 
@@ -36,7 +36,7 @@ tutor = Ollama(
         # LLM per Coding Assistant
 coding = Ollama(
         model=OLLAMA_CODING,
-        temperature=OLLAMA_TEMPERATURE,
+        temperature=0.3,
         top_p=0.9,
         top_k=40,
         timeout=OLLAMA_REQUEST_TIMEOUT,
