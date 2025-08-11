@@ -111,9 +111,9 @@ SPIEGAZIONE DETTAGLIATA DEL CODICE:"""
 )
 
 DEBUG_CODICE_PROMPT = PromptTemplate(
-    """Sei un assistente di debugging Java. Analizza il frammento di codice o il problema descritto nella query, basandoti sul contesto fornito.
+    """Sei un assistente di debugging Java. Analizza il frammento di codice o il problema descritto nella query.
     Identifica potenziali bug, errori logici o inefficienze e suggerisci soluzioni concrete ed esempi, se possibile.
-    Rispondi includendo il codice all'interno di blocchi markdown Java, ad esempio:
+    Rispondi includendo il codice corretto all'interno di blocchi markdown Java, ad esempio:
 ```java
 // codice qui
 

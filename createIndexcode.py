@@ -3,7 +3,7 @@ import time
 from llama_index.core import SimpleDirectoryReader
 from llama_index.core.node_parser import CodeSplitter
 from llama_index.core.ingestion import IngestionPipeline
-from llama_index.core.extractors import TitleExtractor, QuestionsAnsweredExtractor
+from llama_index.core.extractors import TitleExtractor, QuestionsAnsweredExtractor, SummaryExtractor
 from llama_index.llms.ollama import Ollama
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from pinecone import Pinecone, ServerlessSpec
@@ -16,7 +16,7 @@ load_dotenv(dotenv_path='pinecone_key.env')
 JAVA_CODEBASE_PATH = "DATA/codebase"
 PINECONE_CLOUD = "aws"
 PINECONE_REGION = "us-east-1"
-PINECONE_INDEX_NAME = "codebase" 
+PINECONE_INDEX_NAME = "codebase-java" 
 
 
 # Parametri del modello di embedding
@@ -24,8 +24,8 @@ EMBEDDING_MODEL_NAME = "intfloat/e5-base-v2"
 EMBEDDING_DIMENSION = 768 
 
 # Parametri di CodeSplitter
-CODE_CHUNK_LINES = 100
-CODE_CHUNK_OVERLAP = 20
+CODE_CHUNK_LINES = 500
+CODE_CHUNK_OVERLAP = 100
 
 
 print(f"Caricamento dei documenti Java da: {JAVA_CODEBASE_PATH}...")
@@ -68,19 +68,13 @@ code_splitter = CodeSplitter(
     chunk_lines_overlap=CODE_CHUNK_OVERLAP
     
 )
-title_extractor = TitleExtractor(
-    
-    llm=llm,
-    nodes=3
-    
-    )
-qa_extractor = QuestionsAnsweredExtractor(
-    
-    llm=llm,
-    questions=2, 
 
-    
-    )
+
+
+code_explainer = SummaryExtractor(
+    llm=llm,
+    nodes=3,
+)
 
 
 
@@ -89,8 +83,7 @@ pipeline = IngestionPipeline(
     transformations=
     [
         code_splitter,
-        title_extractor,
-        qa_extractor
+        code_explainer
         
     ]
 )

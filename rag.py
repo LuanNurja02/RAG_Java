@@ -33,7 +33,7 @@ import datetime
 load_dotenv(dotenv_path='pinecone_key.env')
 
 TUTOR_INDEX_NAME = "documenti-extra"
-ASSISTANT_INDEX = "codebase"
+ASSISTANT_INDEX = "codebase-java"
 EMBEDDING_MODEL_NAME = "intfloat/e5-base-v2"
 # Re-ranker
 RERANK_MODEL_NAME = "BAAI/bge-reranker-base"
