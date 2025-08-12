@@ -40,7 +40,6 @@ coding = Ollama(
         top_p=0.9,
         top_k=40,
         timeout=OLLAMA_REQUEST_TIMEOUT,
-        repeat_penalty=1.2,
         num_predict=OLLAMA_MAX_TOKENS,
         request_timeout=OLLAMA_REQUEST_TIMEOUT,
         context_window=OLLAMA_CONTEXT_WINDOW
@@ -55,7 +54,7 @@ TUTOR_PROMPT = PromptTemplate(
     Se ti pongono domande su argomenti che non sono inerenti al linguaggio Java, rispondi che non sei in grado di rispondere.
 -------------------------------------------
 {context_str}
-------------------------------------------.
+------------------------------------------
 query: {query_str}
 
 RISPOSTA DETTAGLIATA:"""
@@ -104,7 +103,7 @@ SPIEGAZIONE_CODICE_PROMPT = PromptTemplate(
 
 -------------------------------------------
 {context_str}
-------------------------------------------.
+------------------------------------------
 query: {query_str}
 
 SPIEGAZIONE DETTAGLIATA DEL CODICE:"""
@@ -119,7 +118,7 @@ DEBUG_CODICE_PROMPT = PromptTemplate(
 
 -------------------------------------------
 {context_str}
-------------------------------------------.
+------------------------------------------
 query: {query_str}
 
 ANALISI E SUGGERIMENTI PER IL DEBUG:"""
@@ -136,7 +135,7 @@ CREA_CODICE_PROMPT = PromptTemplate(
 
 -------------------------------------------
 {context_str}
-------------------------------------------.
+------------------------------------------
 query: {query_str}
 
 CODICE JAVA GENERATO:"""
