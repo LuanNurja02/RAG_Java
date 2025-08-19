@@ -1,0 +1,31 @@
+query,retrieved_node,relevancy_score,relevancy_passing,faithfulness_score,faithfulness_passing
+Mi spieghi il concetto di polimorfismo?,Manuale pratico di Java                                                                             ...,1.000,True,1.000,True
+Mi spieghi il concetto di polimorfismo?,Manuale pratico di Java                                                                             ...,1.000,True,1.000,True
+Mi spieghi il concetto di polimorfismo?,38                                                               Capitolo 2. Il linguaggio Java A a ...,1.000,True,1.000,True
+Che cos'è l'ereditarietà in Java?,Manuale pratico di Java                                                                             ...,0.000,False,1.000,True
+Che cos'è l'ereditarietà in Java?,"CARATTERISTICHE DEL LINGUAGGIO    17 semplice che non prevede alcuni costrutti linguistici, tipici d...",1.000,True,1.000,True
+Che cos'è l'ereditarietà in Java?,16                                                               Capitolo 2. Il linguaggio Java Per ...,1.000,True,1.000,True
+A cosa serve il costrutto try-catch?,Manuale pratico di Java                                                                             ...,1.000,True,1.000,True
+A cosa serve il costrutto try-catch?,CAPITOLO  11  244 stesso (clausola throws): tali classi di eccezione devono essere pertanto  esplici...,1.000,True,1.000,True
+A cosa serve il costrutto try-catch?,Manuale pratico di Java                                                                             ...,1.000,True,1.000,True
+Differenza tra interface e abstract class?,CAPITOLO  10  226 questo caso essa rappresenta un concetto astratto e non può essere  istanziata (no...,1.000,True,1.000,True
+Differenza tra interface e abstract class?,50                                                               Capitolo 2. Il linguaggio Java Ecco...,1.000,True,1.000,True
+Differenza tra interface e abstract class?,"DERIVAZIONE    227 10.7.1.  Classi astratte e tipi di dato astratti    Come detto nel Capitolo 7, un...",1.000,True,1.000,True
+Mi fai un esempio di classe esterna ed interna ,"ALTRE PROPRIETÀ DELLE CLASSI    195 9.4.1.  Classi interne    Una classe interna ha accesso, oltre c...",0.000,False,1.000,True
+Mi fai un esempio di classe esterna ed interna ,CAPITOLO  9  196   { i++;          // i di ClasseInterna     j++;          // j di ClasseEsterna    ...,1.000,True,1.000,True
+Mi fai un esempio di classe esterna ed interna ,CAPITOLO  9  198 del costruttore ClasseInterna(5) (assegnamento a this.c del valore 5 e  stampa di C...,0.000,False,1.000,True
+Come si implementa una espressione lambda,"CAPITOLO  5  84  Quando la funzione scambia() viene chiamata (dalla funzione main()), il  valore di ...",0.000,False,1.000,True
+Come si implementa una espressione lambda,"CAPITOLO  4  58  Fra le rimanenti istruzioni, tratteremo nei paragrafo successivi quelle  espression...",1.000,True,1.000,True
+Come si implementa una espressione lambda,"TIPI, VARIABILI, ESPRESSIONI    45 Una costante è una variabile final con valore iniziale specificat...",1.000,True,1.000,True
+A cosa serve il costruttore?,Manuale pratico di Java                                                                             ...,1.000,True,1.000,True
+A cosa serve il costruttore?,712                                                               Capitolo 16. Java e CORBA return r...,0.000,False,1.000,True
+A cosa serve il costruttore?,720                                                               Capitolo 16. Java e CORBA String i...,0.000,False,1.000,True
+Come si fa l'overriding di un metodo?,CAPITOLO  10  214  public void elabora(int i)   { /* ... */ }  }    class SottoClasse3 extends Super...,1.000,True,1.000,True
+Come si fa l'overriding di un metodo?,DERIVAZIONE    213 class SottoClasse2 extends SuperClasse2  { double d;   public SottoClasse2(double...,1.000,True,1.000,True
+Come si fa l'overriding di un metodo?,Manuale pratico di Java                                                                             ...,1.000,True,1.000,True
+Come si leggono i file binari,CAPITOLO  12  270   public byte leggiByte()    { try { return ingresso.readByte(); }      catch (IOE...,1.000,True,1.000,True
+Come si leggono i file binari,"INGRESSO E USCITA    269 consentono di effettuare agevolmente operazioni binarie sui file, e  gestis...",0.000,False,1.000,True
+Come si leggono i file binari,CAPITOLO  12  272     catch (IOException e) { e.getMessage(); }    }   }    Lo spezzone di programma...,1.000,True,1.000,True
+"Mi spieghi la classe math, in particolare la funzione sin()?",CAPITOLO  3  52  eventuale lista di parametri formali (Capitolo 5). I membri più  comunemente utiliz...,1.000,True,1.000,True
+"Mi spieghi la classe math, in particolare la funzione sin()?",CAPITOLO  3  46  3.3.2.  Esempi    Esempio 1 (x è una variabile reale)    x / 3 * 2    Gli operatori...,1.000,True,1.000,True
+"Mi spieghi la classe math, in particolare la funzione sin()?",5.  Funzioni                      5.1.  Struttura di una funzione      La classe principale di un pr...,1.000,True,1.000,True

@@ -1,5 +1,6 @@
 import pandas as pd
-from rag import vector_indices, configure_query_engine, llm_tutor, reranker, TUTOR_PROMPT
+from rag import vector_indices, configure_query_engine, llm_tutor, reranker
+from util import TUTOR_PROMPT
 from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.postprocessor import SimilarityPostprocessor
 import numpy as np
@@ -9,6 +10,7 @@ import Levenshtein
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from bert_score import score as bert_score
 import sacrebleu
+
 
 nltk.download('punkt', quiet=True)
 
@@ -25,26 +27,47 @@ def cosine_similarity(a, b):
 #dataset per domande e risposte usate per valutare il sistema rag---
 examples = [
     {
-        "question": "Cosa è una lista e come si implementa",
-        "ground_truth": "Una lista è una struttura dati che memorizza una sequenza ordinata di elementi, permettendo l'accesso, l'inserimento e la rimozione. In Java, una lista può essere implementata tramite la classe LinkedList o ArrayList della libreria standard, oppure manualmente usando una classe Node che contiene un valore e un riferimento al prossimo nodo.",
+        "question": "Puoi spiegarmi cos'è il polimorfismo in Java?",
+        "ground_truth": "Il polimorfismo in Java è un concetto della programmazione orientata agli oggetti che consente a oggetti di classi diverse di essere trattati come oggetti della stessa superclasse. Ciò è reso possibile attraverso l'ereditarietà e l'uso delle interfacce. Esistono due tipi principali di polimorfismo: statico (overloading) e dinamico (overriding)."
     },
     {
-        "question": "Differenza tra classe interna ed esterna?",
-        "ground_truth": "Una classe esterna è una classe dichiarata a livello superiore, mentre una classe interna è definita all'interno di un'altra classe. Le classi interne possono accedere ai membri della classe esterna e sono spesso usate per raggruppare logicamente classi strettamente correlate.",
+        "question": "Che ruolo ha l'ereditarietà nella programmazione Java?",
+        "ground_truth": "L'ereditarietà in Java permette a una classe di acquisire le proprietà e i metodi di un'altra classe. La classe che eredita prende il nome di sottoclasse, mentre quella da cui eredita è detta superclasse. È uno dei pilastri della programmazione a oggetti, facilitando il riuso del codice e la creazione di gerarchie di classi."
     },
     {
-        "question": "cosa è e come si effettua l'override in Java?",
-        "ground_truth": "L'override in Java è la pratica di ridefinire un metodo ereditato da una superclasse in una sottoclasse, mantenendo la stessa firma. Si effettua dichiarando il metodo con la stessa firma nella sottoclasse e usando l'annotazione @Override.",
+        "question": "Perché si usa il blocco try-catch in Java?",
+        "ground_truth": "Il costrutto try-catch in Java serve per gestire le eccezioni, ovvero situazioni anomale che possono verificarsi durante l'esecuzione del programma. Il blocco try contiene il codice che può generare un'eccezione, mentre il blocco catch intercetta e gestisce l'eccezione, evitando che il programma termini in modo anomalo."
     },
     {
-        "question": "A cosa serve la parola chiave 'final' in Java?",
-        "ground_truth": "La parola chiave final in Java serve a indicare che una variabile non può essere modificata dopo l'inizializzazione, un metodo non può essere sovrascritto nelle sottoclassi e una classe non può essere estesa.",
+        "question": "Qual è la differenza tra interfaccia e classe astratta?",
+        "ground_truth": "Una interfaccia in Java definisce un contratto che una classe deve rispettare, specificando solo la firma dei metodi. Una classe astratta può invece contenere sia metodi astratti che implementati. Le interfacce supportano l'ereditarietà multipla, mentre le classi astratte no. Dal Java 8, le interfacce possono anche avere metodi di default."
     },
     {
-        "question": "cosa sono i file e come si leggono in java?",
-        "ground_truth": "Un file è una risorsa di memorizzazione persistente su disco. In Java, i file si leggono usando classi come FileReader, BufferedReader o Files.readAllLines(). Ad esempio, si può usare BufferedReader reader = new BufferedReader(new FileReader(\"nomefile.txt\")); per leggere il contenuto riga per riga.",
+        "question": "Come si dichiarano e usano classi interne in Java?",
+        "ground_truth": "Una classe interna è una classe dichiarata all'interno di un'altra classe. Può accedere ai membri (anche privati) della classe esterna. Si usa per raggruppare logicamente classi correlate. Le classi esterne, invece, sono dichiarate a livello di file. Le classi interne possono essere statiche o non statiche."
     },
+    {
+        "question": "In che modo si può scrivere un'espressione lambda in Java?",
+        "ground_truth": "Le espressioni lambda in Java sono introdotte a partire da Java 8 e permettono di scrivere funzioni anonime. La sintassi base è (parametri) -> { corpo }. Sono spesso usate con le interfacce funzionali, come Runnable o Comparator, per rendere il codice più conciso e leggibile."
+    },
+    {
+        "question": "Per cosa viene usato un costruttore in Java?",
+        "ground_truth": "Il costruttore è un metodo speciale usato per inizializzare un oggetto quando viene creato. Ha lo stesso nome della classe e non ha un tipo di ritorno. Può essere sovraccaricato per creare oggetti con diverse inizializzazioni."
+    },
+    {
+        "question": "Come si fa l'override di un metodo in Java?",
+        "ground_truth": "L'override (sovrascrittura) di un metodo in Java si effettua quando una sottoclasse fornisce una nuova implementazione di un metodo ereditato dalla superclasse. Si usa l'annotazione @Override per indicarlo chiaramente. Il metodo deve avere la stessa firma e non può essere più restrittivo nei modificatori di accesso."
+    },
+    {
+        "question": "Qual è il modo corretto per leggere file binari in Java?",
+        "ground_truth": "Per leggere file binari in Java si usano classi come FileInputStream o DataInputStream. Ad esempio, con FileInputStream fis = new FileInputStream(\"file.dat\"); si può leggere byte per byte. Questi flussi permettono di leggere dati grezzi in formato binario."
+    },
+    {
+        "question": "Come funziona il metodo Math.sin() in Java?",
+        "ground_truth": "La classe Math in Java fornisce metodi statici per operazioni matematiche comuni. Il metodo Math.sin(double a) restituisce il seno dell'angolo specificato in radianti. Per esempio, Math.sin(Math.PI/2) restituisce 1.0."
+    }
 ]
+
 
 
 index = vector_indices["Tutor"]
